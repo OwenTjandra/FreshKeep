@@ -31,7 +31,8 @@
       "bundler": "metro"
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      "./plugins/withFreshKeepWidget.js"
     ]
   }
 }

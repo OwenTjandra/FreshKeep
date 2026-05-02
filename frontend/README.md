@@ -53,3 +53,33 @@ If `npm install` warns about peer-dep / Expo-SDK version mismatches, run `npx ex
 ## Why not Expo Go?
 
 The widget plus any custom Kotlin we add (Step 17) requires a development build. The `--dev-client` start command is wired into `npm start`.
+
+## Android home-screen widget (Step 17)
+
+The widget is built natively (Jetpack Glance + Kotlin) and installed by an Expo config plugin so it survives `expo prebuild`.
+
+```
+plugins/
+  withFreshKeepWidget.js      # the config plugin — runs at prebuild time
+widget-android-src/
+  java/com/owentjandra/freshkeep/widget/
+    WidgetCache.kt            # reads <Context.filesDir>/widget-cache.json
+    WidgetTheme.kt            # action→color mapping, deep-link intents
+    SmallWidget.kt            # 2x2 — count of eat_now + eat_soon
+    MediumWidget.kt           # 4x2 — top 3 items
+    LargeWidget.kt            # 4x4 — top 5 + reason callout
+  res/xml/                    # appwidget-provider XMLs (one per size)
+  res/values/                 # widget descriptions
+```
+
+When you run `npx expo prebuild --clean`, the plugin:
+1. Copies the Kotlin sources into `android/app/src/main/java/.../widget/`
+2. Copies the XML resources into `android/app/src/main/res/`
+3. Adds three `<receiver>` entries to `AndroidManifest.xml`
+4. Adds `androidx.glance:glance-appwidget` to `app/build.gradle`
+
+Then `npx expo run:android` builds and installs. Long-press your home screen → Widgets → FreshKeep → drag any size onto the screen.
+
+Tap behavior: any item row deep-links via `freshkeep://item/<id>`.
+
+If the widget shows "tap to refresh", the JSON cache is older than 24h. Open the app to refresh (Step 18 will add automatic refresh paths).

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_small_description">FreshKeep — count of items to use up</string>
+    <string name="widget_medium_description">FreshKeep — top 3 items by priority</string>
+    <string name="widget_large_description">FreshKeep — top 5 items + urgent reason</string>
+</resources>
