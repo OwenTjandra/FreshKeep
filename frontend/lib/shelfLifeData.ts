@@ -58,8 +58,8 @@ export const SHELF_LIFE: ShelfLifeRow[] = [
   { category: 'meat_fish',          location: 'freezer', opened: true,  days_min:  90, days_typical: 180, days_max: 240, freezable: true  },
 
   // Produce
-  { category: 'produce_leafy',      location: 'fridge',  opened: false, days_min:   5, days_typical:   7, days_max:  10, freezable: true  },
-  { category: 'produce_leafy',      location: 'fridge',  opened: true,  days_min:   3, days_typical:   5, days_max:   7, freezable: true  },
+  { category: 'produce_leafy',      location: 'fridge',  opened: false, days_min:   5, days_typical:   7, days_max:  10, freezable: false },
+  { category: 'produce_leafy',      location: 'fridge',  opened: true,  days_min:   3, days_typical:   5, days_max:   7, freezable: false },
   { category: 'produce_leafy',      location: 'freezer', opened: false, days_min: 240, days_typical: 270, days_max: 365, freezable: true  },
   { category: 'produce_hard_veg',   location: 'fridge',  opened: false, days_min:  14, days_typical:  21, days_max:  28, freezable: true  },
   { category: 'produce_hard_veg',   location: 'fridge',  opened: true,  days_min:   7, days_typical:  14, days_max:  14, freezable: true  },
@@ -68,17 +68,17 @@ export const SHELF_LIFE: ShelfLifeRow[] = [
   { category: 'produce_soft_fruit', location: 'fridge',  opened: false, days_min:   3, days_typical:   5, days_max:   7, freezable: true  },
   { category: 'produce_soft_fruit', location: 'fridge',  opened: true,  days_min:   2, days_typical:   3, days_max:   5, freezable: true  },
   { category: 'produce_soft_fruit', location: 'freezer', opened: false, days_min: 180, days_typical: 240, days_max: 365, freezable: true  },
-  { category: 'produce_hard_fruit', location: 'counter', opened: false, days_min:   7, days_typical:  14, days_max:  21, freezable: true  },
-  { category: 'produce_hard_fruit', location: 'fridge',  opened: false, days_min:  21, days_typical:  30, days_max:  42, freezable: true  },
-  { category: 'produce_hard_fruit', location: 'fridge',  opened: true,  days_min:   3, days_typical:   5, days_max:   7, freezable: true  },
+  { category: 'produce_hard_fruit', location: 'counter', opened: false, days_min:   7, days_typical:  14, days_max:  21, freezable: false },
+  { category: 'produce_hard_fruit', location: 'fridge',  opened: false, days_min:  21, days_typical:  30, days_max:  42, freezable: false },
+  { category: 'produce_hard_fruit', location: 'fridge',  opened: true,  days_min:   3, days_typical:   5, days_max:   7, freezable: false },
   { category: 'produce_hard_fruit', location: 'freezer', opened: false, days_min: 240, days_typical: 270, days_max: 365, freezable: true  },
   { category: 'produce_berries',    location: 'fridge',  opened: false, days_min:   3, days_typical:   5, days_max:   7, freezable: true  },
   { category: 'produce_berries',    location: 'fridge',  opened: true,  days_min:   2, days_typical:   3, days_max:   5, freezable: true  },
   { category: 'produce_berries',    location: 'freezer', opened: false, days_min: 180, days_typical: 270, days_max: 365, freezable: true  },
 
   // Eggs / bread / deli
-  { category: 'eggs',               location: 'fridge',  opened: false, days_min:  21, days_typical:  28, days_max:  35, freezable: true  },
-  { category: 'eggs',               location: 'fridge',  opened: true,  days_min:   2, days_typical:   2, days_max:   4, freezable: true  },
+  { category: 'eggs',               location: 'fridge',  opened: false, days_min:  21, days_typical:  28, days_max:  35, freezable: false },
+  { category: 'eggs',               location: 'fridge',  opened: true,  days_min:   2, days_typical:   2, days_max:   4, freezable: false },
   { category: 'eggs',               location: 'freezer', opened: true,  days_min: 365, days_typical: 365, days_max: 365, freezable: true  },
   { category: 'bread',              location: 'counter', opened: false, days_min:   5, days_typical:   7, days_max:  14, freezable: true  },
   { category: 'bread',              location: 'counter', opened: true,  days_min:   5, days_typical:   7, days_max:  14, freezable: true  },

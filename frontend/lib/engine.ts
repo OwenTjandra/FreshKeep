@@ -9,8 +9,16 @@ export const COOKABLE_CATEGORIES = new Set([
   'eggs', 'bread', 'pantry_dry_goods',
 ]);
 
+// Categories where freezing destroys quality (or is unsafe in the form
+// users typically buy them — eggs in shell, lettuce, apples). The engine
+// will not recommend "Mark frozen" for these.
 const NOT_FREEZABLE_CATEGORIES = new Set([
-  'dairy_cheese_soft', 'pantry_dry_goods', 'pantry_canned',
+  'dairy_cheese_soft',
+  'pantry_dry_goods',
+  'pantry_canned',
+  'eggs',                // can only freeze beaten, not in shell
+  'produce_leafy',       // gets soggy when thawed
+  'produce_hard_fruit',  // mushy when thawed (apples, pears)
 ]);
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
