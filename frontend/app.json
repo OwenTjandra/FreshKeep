@@ -46,6 +46,18 @@
     "notification": {
       "icon": "./assets/icon.png",
       "color": "#10B981"
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "3e09b031-e6ff-4922-807a-e711a1496d3f"
+      }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/3e09b031-e6ff-4922-807a-e711a1496d3f"
     }
   }
 }
