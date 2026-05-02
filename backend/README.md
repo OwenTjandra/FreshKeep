@@ -27,8 +27,10 @@ The server listens on `$PORT` (default 3000).
 - `POST /api/scan`                 — barcode lookup (Step 3). Body: `{ "barcode": "0000000000000" }`. Returns `{ found, name, brand, category, shelf_life: { days_min, days_typical, days_max, freezable, source, based_on } }` or `{ found: false, manual_entry_required: true }`. Cached in `product_cache`.
 - `GET  /api/items`                — list items (Step 4). Filters: `status`, `location`, `opened`. Default: active items only. Each item returns `days_until_expiry` and `recommended_action` (engine output, currently `null` until Step 5).
 - `POST /api/items`                — create. Required: `name`, `expiry_date` (YYYY-MM-DD). Optional: `barcode`, `category`, `quantity`, `location` (default `fridge`), `opened`. If `opened=true`, `opened_at` is set to now automatically.
+- `GET  /api/items/:id`            — fetch a single item including engine output (Step 10).
 - `PATCH /api/items/:id`           — update `name`, `category`, `quantity`, `location`, `expiry_date`, `status`. (Use `/open` to flip `opened`.)
 - `PATCH /api/items/:id/open`      — mark opened: sets `opened=true`, `opened_at=NOW()`, and recomputes `expiry_date = LEAST(current, today + opened_days_typical)` from the shelf-life table.
+- `PATCH /api/items/:id/mark-fine` — stamps `user_marked_fine_at = NOW()`, used for the past-expiry 24-hour grace window (Step 5 monitor branch / Step 10).
 - `DELETE /api/items/:id`          — hard delete. (To mark as eaten or thrown out, PATCH `status` to `used` / `tossed`.)
 
 All `/api/items` routes are scoped to the seeded demo user via the dev middleware. Real auth is deferred.

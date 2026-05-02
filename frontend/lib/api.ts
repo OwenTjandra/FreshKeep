@@ -96,6 +96,7 @@ export type Item = {
   action_reason: string | null;
   user_marked_fine_at: string | null;
   days_until_expiry: number;
+  freezable: boolean | null;
 };
 
 export function listItems(filters: { status?: string; location?: ItemLocation; opened?: boolean } = {}) {
@@ -129,8 +130,16 @@ export function updateItem(id: string, patch: Partial<Pick<Item, 'name' | 'categ
   });
 }
 
+export function getItem(id: string) {
+  return http<Item>(`/api/items/${id}`);
+}
+
 export function markItemOpened(id: string) {
   return http<Item>(`/api/items/${id}/open`, { method: 'PATCH' });
+}
+
+export function markItemStillFine(id: string) {
+  return http<Item>(`/api/items/${id}/mark-fine`, { method: 'PATCH' });
 }
 
 export function deleteItem(id: string) {

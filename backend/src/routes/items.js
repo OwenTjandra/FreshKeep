@@ -6,6 +6,8 @@ import {
   updateItem,
   deleteItem,
   markOpened,
+  getItem,
+  markStillFine,
 } from '../services/items.js';
 
 const router = express.Router();
@@ -37,10 +39,30 @@ router.post('/', async (req, res, next) => {
   }
 });
 
+// GET /api/items/:id
+router.get('/:id', async (req, res, next) => {
+  try {
+    const item = await getItem(req.user, req.params.id);
+    res.json(item);
+  } catch (err) {
+    next(err);
+  }
+});
+
 // PATCH /api/items/:id/open  — must be defined before PATCH /:id
 router.patch('/:id/open', async (req, res, next) => {
   try {
     const item = await markOpened(req.user, req.params.id);
+    res.json(item);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// PATCH /api/items/:id/mark-fine
+router.patch('/:id/mark-fine', async (req, res, next) => {
+  try {
+    const item = await markStillFine(req.user, req.params.id);
     res.json(item);
   } catch (err) {
     next(err);

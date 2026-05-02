@@ -8,6 +8,19 @@ import { computeRecommendedAction } from './expirationIntelligence.js';
 const VALID_LOCATIONS = ['fridge', 'freezer', 'counter', 'pantry'];
 const VALID_STATUSES = ['active', 'used', 'tossed', 'pending'];
 
+// Common SELECT — joins shelf_life_reference so items carry `freezable`
+// (used by the engine and by UI buttons like "Mark frozen").
+const ITEM_SELECT = `
+  SELECT i.*,
+         (i.expiry_date - CURRENT_DATE) AS days_until_expiry,
+         slr.freezable AS freezable
+  FROM items i
+  LEFT JOIN shelf_life_reference slr
+    ON slr.category = i.category
+   AND slr.location = i.location
+   AND slr.opened   = i.opened
+`;
+
 function httpError(status, code, message) {
   const err = new Error(message);
   err.status = status;
@@ -104,38 +117,58 @@ function validatePatch(body) {
  * Pass status='all' to skip the status filter.
  */
 export async function listItems(user, filters = {}) {
-  const conditions = ['user_id = $1'];
+  // Conditions reference the items alias 'i.' (defined in ITEM_SELECT).
+  const conditions = ['i.user_id = $1'];
   const params = [user.id];
 
   if (filters.status === undefined) {
-    conditions.push(`status = 'active'`);
+    conditions.push(`i.status = 'active'`);
   } else if (filters.status !== 'all') {
     if (!VALID_STATUSES.includes(filters.status)) {
       throw httpError(400, 'invalid_status', `status must be one of: ${VALID_STATUSES.join(', ')} or 'all'`);
     }
     params.push(filters.status);
-    conditions.push(`status = $${params.length}`);
+    conditions.push(`i.status = $${params.length}`);
   }
   if (filters.location !== undefined) {
     if (!VALID_LOCATIONS.includes(filters.location)) {
       throw httpError(400, 'invalid_location', `location must be one of: ${VALID_LOCATIONS.join(', ')}`);
     }
     params.push(filters.location);
-    conditions.push(`location = $${params.length}`);
+    conditions.push(`i.location = $${params.length}`);
   }
   if (filters.opened !== undefined) {
     params.push(filters.opened);
-    conditions.push(`opened = $${params.length}`);
+    conditions.push(`i.opened = $${params.length}`);
   }
 
   const sql = `
-    SELECT *, (expiry_date - CURRENT_DATE) AS days_until_expiry
-    FROM items
+    ${ITEM_SELECT}
     WHERE ${conditions.join(' AND ')}
-    ORDER BY expiry_date ASC, name ASC
+    ORDER BY i.expiry_date ASC, i.name ASC
   `;
   const r = await query(sql, params);
   return r.rows.map(row => enrich(row, user));
+}
+
+export async function getItem(user, id) {
+  return getItemOrThrow(user, id);
+}
+
+/**
+ * PATCH /api/items/:id/mark-fine
+ * Stamps user_marked_fine_at = NOW(). Lets the engine show "monitor"
+ * for past-expiry items the user has eyeballed and decided are OK,
+ * for a 24-hour grace window (Step 5 edge case).
+ */
+export async function markStillFine(user, id) {
+  const r = await query(`
+    UPDATE items SET user_marked_fine_at = NOW()
+    WHERE id = $1 AND user_id = $2
+    RETURNING id
+  `, [id, user.id]);
+  if (!r.rows.length) throw httpError(404, 'not_found', 'item not found');
+  return getItemOrThrow(user, id);
 }
 
 export async function createItem(user, body) {
@@ -148,7 +181,7 @@ export async function createItem(user, body) {
     INSERT INTO items
       (user_id, name, barcode, category, quantity, location, opened, opened_at, expiry_date)
     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-    RETURNING *, (expiry_date - CURRENT_DATE) AS days_until_expiry
+    RETURNING id
   `, [
     user.id,
     body.name.trim(),
@@ -161,7 +194,7 @@ export async function createItem(user, body) {
     body.expiry_date,
   ]);
 
-  return enrich(r.rows[0], user);
+  return getItemOrThrow(user, r.rows[0].id);
 }
 
 export async function updateItem(user, id, body) {
@@ -176,15 +209,13 @@ export async function updateItem(user, id, body) {
   const params = fields.map(f => body[f]);
   params.push(id, user.id);
 
-  const sql = `
-    UPDATE items
-    SET ${sets.join(', ')}
+  const r = await query(`
+    UPDATE items SET ${sets.join(', ')}
     WHERE id = $${fields.length + 1} AND user_id = $${fields.length + 2}
-    RETURNING *, (expiry_date - CURRENT_DATE) AS days_until_expiry
-  `;
-  const r = await query(sql, params);
+    RETURNING id
+  `, params);
   if (!r.rows.length) throw httpError(404, 'not_found', 'item not found');
-  return enrich(r.rows[0], user);
+  return getItemOrThrow(user, id);
 }
 
 export async function deleteItem(user, id) {
@@ -224,24 +255,16 @@ export async function markOpened(user, id) {
   }
 
   const sql = openedDays === null
-    ? `
-      UPDATE items
-      SET opened = TRUE, opened_at = NOW()
-      WHERE id = $1 AND user_id = $2
-      RETURNING *, (expiry_date - CURRENT_DATE) AS days_until_expiry
-    `
-    : `
-      UPDATE items
-      SET opened = TRUE,
-          opened_at = NOW(),
-          expiry_date = LEAST(expiry_date, CURRENT_DATE + $1::int)
-      WHERE id = $2 AND user_id = $3
-      RETURNING *, (expiry_date - CURRENT_DATE) AS days_until_expiry
-    `;
+    ? `UPDATE items SET opened = TRUE, opened_at = NOW()
+       WHERE id = $1 AND user_id = $2 RETURNING id`
+    : `UPDATE items
+       SET opened = TRUE, opened_at = NOW(),
+           expiry_date = LEAST(expiry_date, CURRENT_DATE + $1::int)
+       WHERE id = $2 AND user_id = $3 RETURNING id`;
   const params = openedDays === null ? [id, user.id] : [openedDays, id, user.id];
 
-  const r = await query(sql, params);
-  return enrich(r.rows[0], user);
+  await query(sql, params);
+  return getItemOrThrow(user, id);
 }
 
 // ───────────────────────────────────────────────────────────
@@ -250,8 +273,7 @@ export async function markOpened(user, id) {
 
 async function getItemOrThrow(user, id) {
   const r = await query(
-    `SELECT *, (expiry_date - CURRENT_DATE) AS days_until_expiry
-     FROM items WHERE id = $1 AND user_id = $2`,
+    `${ITEM_SELECT} WHERE i.id = $1 AND i.user_id = $2`,
     [id, user.id]
   );
   if (!r.rows.length) throw httpError(404, 'not_found', 'item not found');
