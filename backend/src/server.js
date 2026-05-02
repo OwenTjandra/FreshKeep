@@ -3,6 +3,7 @@ import express from 'express';
 import cors from 'cors';
 
 import scanRouter from './routes/scan.js';
+import itemsRouter from './routes/items.js';
 
 const app = express();
 app.use(cors());
@@ -13,6 +14,7 @@ app.get('/health', (_req, res) => {
 });
 
 app.use('/api/scan', scanRouter);
+app.use('/api/items', itemsRouter);
 
 // Centralized error handler — services throw, routes call next(err), this responds.
 // eslint-disable-next-line no-unused-vars

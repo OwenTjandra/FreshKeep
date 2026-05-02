@@ -21,8 +21,15 @@ The server listens on `$PORT` (default 3000).
 
 ## Endpoints
 
-- `GET  /health`     — service liveness
-- `POST /api/scan`   — barcode lookup (Step 3). Body: `{ "barcode": "0000000000000" }`. Returns `{ found, name, brand, category, shelf_life: { days_min, days_typical, days_max, freezable, source, based_on } }` or `{ found: false, manual_entry_required: true }`. Cached in `product_cache`.
+- `GET  /health`                   — service liveness
+- `POST /api/scan`                 — barcode lookup (Step 3). Body: `{ "barcode": "0000000000000" }`. Returns `{ found, name, brand, category, shelf_life: { days_min, days_typical, days_max, freezable, source, based_on } }` or `{ found: false, manual_entry_required: true }`. Cached in `product_cache`.
+- `GET  /api/items`                — list items (Step 4). Filters: `status`, `location`, `opened`. Default: active items only. Each item returns `days_until_expiry` and `recommended_action` (engine output, currently `null` until Step 5).
+- `POST /api/items`                — create. Required: `name`, `expiry_date` (YYYY-MM-DD). Optional: `barcode`, `category`, `quantity`, `location` (default `fridge`), `opened`. If `opened=true`, `opened_at` is set to now automatically.
+- `PATCH /api/items/:id`           — update `name`, `category`, `quantity`, `location`, `expiry_date`, `status`. (Use `/open` to flip `opened`.)
+- `PATCH /api/items/:id/open`      — mark opened: sets `opened=true`, `opened_at=NOW()`, and recomputes `expiry_date = LEAST(current, today + opened_days_typical)` from the shelf-life table.
+- `DELETE /api/items/:id`          — hard delete. (To mark as eaten or thrown out, PATCH `status` to `used` / `tossed`.)
+
+All `/api/items` routes are scoped to the seeded demo user via the dev middleware. Real auth is deferred.
 
 ## Structure
 
@@ -41,11 +48,16 @@ src/
       003_product_cache.sql               # barcode → OFF lookup cache (Step 3)
     seeds/
       seed.js                             # 1 demo user + 10 sample items (Step 1)
+  middleware/
+    devUser.js                            # demo-user shim (Step 4) — replace with real auth later
   routes/
     scan.js                               # POST /api/scan (Step 3)
+    items.js                              # /api/items CRUD + /:id/open (Step 4)
   services/
     foodFacts.js                          # OFF client + category mapping (Step 3)
     scan.js                               # cache → OFF → shelf-life enrich (Step 3)
+    items.js                              # items CRUD + markOpened recompute (Step 4)
+    expirationIntelligence.js             # rule engine (Step 5; currently a stub)
 ```
 
 ## Schema overview (Step 1)
