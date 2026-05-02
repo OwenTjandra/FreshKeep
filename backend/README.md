@@ -33,6 +33,31 @@ The server listens on `$PORT` (default 3000).
 - `PATCH /api/items/:id/mark-fine` — stamps `user_marked_fine_at = NOW()`, used for the past-expiry 24-hour grace window (Step 5 monitor branch / Step 10).
 - `DELETE /api/items/:id`          — hard delete. (To mark as eaten or thrown out, PATCH `status` to `used` / `tossed`.)
 - `POST /api/recipes/suggest`      — Body: `{ item_id }`. Returns either a `{ type: 'recipe', title, time, difficulty, ingredients[], steps[] }` from Claude Sonnet 4.5 (Step 12), or `{ type: 'reminder', title, tip }` for non-cookable categories (skips the API call). Requires `ANTHROPIC_API_KEY` in env; returns 503 `anthropic_not_configured` otherwise. Recipe output is forced via `tool_use` so it's always valid JSON.
+- `POST /api/notifications/register-token` — Body: `{ token, device_label? }`. Stores an FCM token in `fcm_tokens`. Idempotent on `(user_id, token)`.
+- `POST /api/notifications/test`   — Trigger a push *now* for the current user, ignoring the 9am window and `last_notified_at` gate. Useful for verifying templating end-to-end. Doesn't update `last_notified_at` (dryRun: true).
+
+## Push notifications (Step 14)
+
+The scheduler runs every 5 minutes and sends to users whose local hour is 8 or 9 *and* who haven't been notified today. **Off by default** — set `NOTIFICATIONS_ENABLED=true` in `.env` to start it.
+
+Message text is contextual per item state, not just date. Examples:
+- `eat_now` + `opened=false` + breakfast-friendly category → "🥣 Open it for breakfast — You haven't opened that yogurt yet — it expires today. Have it for breakfast?"
+- `freeze_now` → "🧊 Freeze your bread — Save it for later — tap to mark frozen."
+- `eat_soon` → "milk expires soon — Use within 3 days."
+- `compost` → "bread is past its date — Check it carefully — or toss it."
+- `safe` / `monitor` → no push.
+
+### Firebase setup (your TODO)
+
+Without a service account, sends are **no-ops with a log line** so the rest of the API still works:
+
+1. Create a Firebase project at console.firebase.google.com.
+2. Add an Android app with package `com.owentjandra.freshkeep`.
+3. Download `google-services.json` and put it at `frontend/google-services.json`. Then in `frontend/app.json` set `expo.android.googleServicesFile = "./google-services.json"`.
+4. Project Settings → Service Accounts → **Generate new private key**. Save the JSON somewhere safe (NOT in git).
+5. Set `FIREBASE_SERVICE_ACCOUNT_PATH=/abs/path/to/service-account.json` in `backend/.env`.
+6. `npm install firebase-admin` — declared as `optionalDependencies` so install only runs when needed.
+7. Set `NOTIFICATIONS_ENABLED=true` and restart.
 
 All `/api/items` routes are scoped to the seeded demo user via the dev middleware. Real auth is deferred.
 

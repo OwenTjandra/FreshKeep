@@ -193,3 +193,18 @@ export function updateMe(patch: { fridge_temp_setting?: number; onboarded?: bool
     body: JSON.stringify(patch),
   });
 }
+
+// ───────── Notifications ─────────
+export function registerFcmToken(token: string, deviceLabel?: string) {
+  return http<{ ok: true }>('/api/notifications/register-token', {
+    method: 'POST',
+    body: JSON.stringify({ token, device_label: deviceLabel }),
+  });
+}
+
+export function sendTestNotification() {
+  return http<{ sent: boolean; reason?: string; item_id?: string; action?: string }>(
+    '/api/notifications/test',
+    { method: 'POST' }
+  );
+}
