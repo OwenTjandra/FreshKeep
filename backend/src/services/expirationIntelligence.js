@@ -12,9 +12,9 @@
 //   9. 4–7 days                                           → eat_soon    (2)
 //  10. >7 days                                            → safe        (5)
 //
-// Step 6 will multiply effective shelf-life days by a fridge-temp factor
-// before this function sees `days_until_expiry`. Until then this engine
-// trusts the days value passed in.
+// Fridge-temp multiplier (Step 6) is applied INSIDE the engine, only for
+// items where location='fridge' and days_until_expiry >= 0. Past-expiry
+// items are not adjusted (a cold fridge can't un-expire something).
 
 export const COOKABLE_CATEGORIES = new Set([
   'meat_chicken',
@@ -43,19 +43,50 @@ const NOT_FREEZABLE_CATEGORIES = new Set([
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
+ * Step 6 multiplier table. Values are educated starting estimates per the user's
+ * spec — tune them once we have real spoilage data (Step 20's Bayesian adjuster).
+ *
+ *   ≤35°F → 1.15x   (cold fridge — 15% more shelf life)
+ *   36–38°F → 1.0x  (USDA-recommended — baseline)
+ *   39–40°F → 0.85x (slightly warm — 15% less)
+ *   ≥41°F → 0.7x    (warm — 30% less)
+ */
+export function fridgeTempMultiplier(tempF) {
+  if (typeof tempF !== 'number' || Number.isNaN(tempF)) return 1.0;
+  if (tempF <= 35) return 1.15;
+  if (tempF <= 38) return 1.0;
+  if (tempF <= 40) return 0.85;
+  return 0.7;
+}
+
+/**
+ * Adjust days_until_expiry by the fridge-temp multiplier.
+ * Only applies to fridge items with non-negative days. Math.floor errs
+ * toward urgency (food-safety conservative).
+ */
+export function effectiveDays(item, user) {
+  const days = item.days_until_expiry;
+  if (item.location !== 'fridge') return days;
+  if (days < 0) return days;
+  if (!user || typeof user.fridge_temp_setting !== 'number') return days;
+  return Math.floor(days * fridgeTempMultiplier(user.fridge_temp_setting));
+}
+
+/**
  * @param {object} item
  *   @prop {string} location          one of fridge|freezer|counter|pantry
  *   @prop {string} [category]        e.g. 'dairy_milk'
  *   @prop {number} days_until_expiry integer; negative means past expiry
  *   @prop {boolean} [freezable]      authoritative when present (from SQL JOIN)
  *   @prop {string|Date|null} [user_marked_fine_at]  ISO string, Date, or null
- * @param {object} [_user]             user record; reserved for Step 6 multiplier
+ * @param {object} [user]              user record; uses fridge_temp_setting for the Step 6 multiplier
  * @returns {{ action: string, priority: number, reason: string } | null}
  */
-export function computeRecommendedAction(item, _user) {
+export function computeRecommendedAction(item, user) {
   if (!item || typeof item.days_until_expiry !== 'number') return null;
 
-  const { location, category, days_until_expiry: days } = item;
+  const { location, category } = item;
+  const days = effectiveDays(item, user);
   const cookable = !!category && COOKABLE_CATEGORIES.has(category);
   const freezable = isFreezable(item);
 

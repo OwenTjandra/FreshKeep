@@ -22,6 +22,8 @@ The server listens on `$PORT` (default 3000).
 ## Endpoints
 
 - `GET  /health`                   — service liveness
+- `GET  /api/users/me`             — fetch the current user (Step 6). Returns `{ id, email, fridge_temp_setting, onboarded_at, ... }`. `onboarded_at = null` means show the onboarding screen.
+- `PATCH /api/users/me`            — update `fridge_temp_setting` (integer °F, 32–50) and/or set `onboarded: true` (one-shot — stamps `onboarded_at = NOW()` if not already set).
 - `POST /api/scan`                 — barcode lookup (Step 3). Body: `{ "barcode": "0000000000000" }`. Returns `{ found, name, brand, category, shelf_life: { days_min, days_typical, days_max, freezable, source, based_on } }` or `{ found: false, manual_entry_required: true }`. Cached in `product_cache`.
 - `GET  /api/items`                — list items (Step 4). Filters: `status`, `location`, `opened`. Default: active items only. Each item returns `days_until_expiry` and `recommended_action` (engine output, currently `null` until Step 5).
 - `POST /api/items`                — create. Required: `name`, `expiry_date` (YYYY-MM-DD). Optional: `barcode`, `category`, `quantity`, `location` (default `fridge`), `opened`. If `opened=true`, `opened_at` is set to now automatically.
@@ -46,6 +48,7 @@ src/
       001_initial.sql                     # users, stores, items, shelf_life_reference
       002_seed_shelf_life_reference.sql   # ~77 rows from USDA FSIS FoodKeeper (Step 2)
       003_product_cache.sql               # barcode → OFF lookup cache (Step 3)
+      004_users_onboarded_at.sql          # users.onboarded_at column (Step 6)
     seeds/
       seed.js                             # 1 demo user + 10 sample items (Step 1)
   middleware/
@@ -53,11 +56,13 @@ src/
   routes/
     scan.js                               # POST /api/scan (Step 3)
     items.js                              # /api/items CRUD + /:id/open (Step 4)
+    users.js                              # /api/users/me get + patch (Step 6)
   services/
     foodFacts.js                          # OFF client + category mapping (Step 3)
     scan.js                               # cache → OFF → shelf-life enrich (Step 3)
     items.js                              # items CRUD + markOpened recompute (Step 4)
-    expirationIntelligence.js             # rule engine (Step 5; currently a stub)
+    users.js                              # user profile read/update (Step 6)
+    expirationIntelligence.js             # rule engine + fridge-temp multiplier (Steps 5, 6)
 ```
 
 ## Schema overview (Step 1)
@@ -100,7 +105,16 @@ output: { action, priority (1-5), reason }  |  null
 
 **Tests:** 16 scenarios in `services/__tests__/expirationIntelligence.test.js` covering every branch + defensive null cases. Run with `npm test` (uses Node's built-in test runner — no Jest/Mocha needed).
 
-The `_user` parameter is reserved for the Step 6 fridge-temperature multiplier — Step 6 will scale `days_until_expiry` *before* it reaches the engine, so this engine doesn't change.
+**Fridge-temperature multiplier (Step 6).** Applied *inside* the engine via `effectiveDays(item, user)` for items where `location='fridge'` and `days_until_expiry >= 0`. Past-expiry items are not adjusted (a cold fridge can't un-expire something). Math: `effective = floor(days × multiplier)` — `floor` errs toward urgency (food-safety conservative).
+
+| User's fridge_temp_setting | Multiplier | Notes                          |
+|----------------------------|------------|--------------------------------|
+| ≤35°F                      | 1.15x      | Cold; ~15% more shelf life     |
+| 36–38°F                    | 1.00x      | USDA-recommended baseline      |
+| 39–40°F                    | 0.85x      | Slightly warm                  |
+| ≥41°F                      | 0.70x      | Warm; ~30% less shelf life     |
+
+These multiplier values are **educated starting estimates** (per the user's spec). Step 20's per-user Bayesian adjuster will tune them from real spoilage data.
 
 ## Conventions
 
