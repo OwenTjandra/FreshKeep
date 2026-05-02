@@ -144,6 +144,50 @@ output: { action, priority (1-5), reason }  |  null
 
 These multiplier values are **educated starting estimates** (per the user's spec). Step 20's per-user Bayesian adjuster will tune them from real spoilage data.
 
+## Deploy (Step 15)
+
+Two options — both have free tiers, both auto-build the Dockerfile in this folder. Pick one.
+
+### Render (Blueprint, single click)
+
+1. Sign up at render.com (GitHub auth).
+2. Dashboard → **New** → **Blueprint** → connect this repo → select `backend/render.yaml`.
+3. Render provisions a free Postgres and a free web service. Initial deploy takes ~5 min.
+4. After it's up, set the secrets in the dashboard:
+   - `ANTHROPIC_API_KEY` (required for `/api/recipes/suggest`)
+   - `FIREBASE_SERVICE_ACCOUNT_PATH` (only if you've finished Firebase setup)
+5. Your backend URL: `https://freshkeep-api.onrender.com` (or whatever Render assigns).
+6. In `frontend/.env`, set `EXPO_PUBLIC_API_URL=https://your-render-url.onrender.com`.
+
+### Railway
+
+1. Sign up at railway.app (GitHub auth).
+2. **New Project** → **Deploy from GitHub repo** → pick `OwenTjandra/FreshKeep`.
+3. Railway detects `backend/railway.toml`. Add the **Postgres** plugin — Railway auto-injects `DATABASE_URL`.
+4. Set env vars in the dashboard: `ANTHROPIC_API_KEY`, optionally `NOTIFICATIONS_ENABLED=true` + `FIREBASE_SERVICE_ACCOUNT_PATH`.
+5. Click **Deploy**. URL appears as `https://freshkeep-api-production.up.railway.app` (or similar).
+
+### Either way: smoke test the deployed API
+
+```bash
+curl https://YOUR-DEPLOY-URL/health
+curl https://YOUR-DEPLOY-URL/api/items
+```
+
+Migrations run automatically at container start (`node src/db/migrate.js && node src/server.js` in the Dockerfile CMD), so a fresh deploy has the right schema. **You'll still need to seed data manually:**
+
+```bash
+# One-off seed against the production DB:
+DATABASE_URL=<paste from Render/Railway dashboard> node src/db/seeds/seed.js
+```
+
+### Why Render over Railway (and vice versa)
+
+- **Render** has a true free tier for both web + Postgres (with caveats: free Postgres expires after 90 days, free web sleeps after 15 min idle and takes ~30s to wake).
+- **Railway** has a $5/mo trial credit; faster cold-start but you'll pay after the credit runs out.
+
+For a hobby app you check a few times a day, Render's free tier is fine. For something always-on, Railway's $5/mo is worth it.
+
 ## Conventions
 
 - ESM only (`"type": "module"` in package.json). Use `import x from './foo.js'` with explicit `.js`.

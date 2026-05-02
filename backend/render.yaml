@@ -1,0 +1,35 @@
+# Render Blueprint — provisions the FreshKeep backend + a managed Postgres.
+# Deploy with one click via render.com/blueprints OR run:
+#   render blueprint launch --file backend/render.yaml
+#
+# Costs (as of 2026): both starter tiers are free; upgrade as load demands.
+
+databases:
+  - name: freshkeep-db
+    plan: free
+    databaseName: freshkeep
+    user: freshkeep
+
+services:
+  - type: web
+    name: freshkeep-api
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: DATABASE_URL
+        fromDatabase:
+          name: freshkeep-db
+          property: connectionString
+      - key: ANTHROPIC_API_KEY
+        sync: false   # set in dashboard — secrets shouldn't live in git
+      - key: NOTIFICATIONS_ENABLED
+        value: "false"  # flip to "true" once Firebase is configured
+      - key: FIREBASE_SERVICE_ACCOUNT_PATH
+        sync: false   # set after uploading the JSON to Render's secret files

@@ -1,0 +1,20 @@
+# Railway config — deploy the FreshKeep backend container.
+# Railway's UI handles Postgres provisioning; this file just describes the
+# build + the runtime command. The DATABASE_URL env var is auto-injected
+# when you attach a Postgres plugin in the Railway dashboard.
+#
+# Deploy:
+#   1. railway init   (or import the repo via railway.app/new)
+#   2. Add the Postgres plugin to your project
+#   3. railway up
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "backend/Dockerfile"
+
+[deploy]
+startCommand = "node src/db/migrate.js && node src/server.js"
+healthcheckPath = "/health"
+healthcheckTimeout = 30
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3
