@@ -13,6 +13,7 @@ import {
 import { useFocusEffect, useRouter } from 'expo-router';
 
 import { listItems, updateItem, type Item } from '../../lib/api';
+import { writeWidgetCache } from '../../lib/widgetCache';
 
 // ───────────────────────────────────────────────────────────
 // Section config — order matches the user's spec for Step 9.
@@ -50,6 +51,9 @@ export default function Home() {
       setError(null);
       const r = await listItems({ status: 'active' });
       setItems(r.items);
+      // Step 11: keep the widget's shared JSON in sync on every refresh.
+      // Failures here are non-fatal — log and move on.
+      writeWidgetCache(r.items).catch((e) => console.warn('widget cache write failed:', e));
     } catch (err: any) {
       setError(err?.message || 'Failed to load');
       setItems([]);
