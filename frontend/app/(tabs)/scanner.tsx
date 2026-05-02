@@ -3,7 +3,7 @@ import { View, Text, TextInput, StyleSheet, ActivityIndicator, Platform } from '
 import { CameraView, useCameraPermissions, type BarcodeScanningResult } from 'expo-camera';
 import { useRouter, useFocusEffect } from 'expo-router';
 
-import { scanBarcode } from '../../lib/api';
+import { scanBarcode, PROTOTYPE_BARCODE } from '../../lib/api';
 import { colors, fonts, space, cardBase } from '../../lib/theme';
 import { Button } from '../../components/Button';
 
@@ -44,11 +44,20 @@ export default function Scanner() {
             autoCapitalize="none"
             style={styles.input}
           />
-          <View style={{ marginTop: space.md }}>
+          <View style={{ marginTop: space.md, gap: space.sm }}>
             <Button
               title={scanning ? 'Looking up…' : 'Look up'}
               onPress={() => typedBarcode.trim() && handleBarcode(typedBarcode.trim())}
               disabled={scanning || !typedBarcode.trim()}
+            />
+            <Button
+              title={`Try demo barcode (${PROTOTYPE_BARCODE})`}
+              variant="secondary"
+              onPress={() => {
+                setTypedBarcode(PROTOTYPE_BARCODE);
+                handleBarcode(PROTOTYPE_BARCODE);
+              }}
+              disabled={scanning}
             />
           </View>
         </View>

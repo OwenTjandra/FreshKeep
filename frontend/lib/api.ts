@@ -89,9 +89,41 @@ import { findShelfLife } from './shelfLifeData';
 
 const OFF_BASE = 'https://world.openfoodfacts.org/api/v2/product/';
 
+// Hardcoded prototype barcode — guaranteed to work for demos even if OFF
+// is offline. Use 0000000000000 ("Demo: Whole milk") in any scan input
+// to step through the full lookup → Set Details → save flow.
+export const PROTOTYPE_BARCODE = '0000000000000';
+
+const PROTOTYPE_PRODUCT = {
+  name:     'Demo: Whole milk',
+  brand:    'FreshKeep Demo',
+  category: 'dairy_milk' as const,
+};
+
 export async function scanBarcode(barcode: string): Promise<ScanResult> {
-  // Check our local items first — if the user added this barcode manually
-  // before, recognize it instantly without a network call.
+  // 1. Prototype barcode — never hits the network. Demo-friendly.
+  if (barcode === PROTOTYPE_BARCODE) {
+    const shelf = findShelfLife(PROTOTYPE_PRODUCT.category, 'fridge', false);
+    return {
+      found: true,
+      barcode,
+      name: PROTOTYPE_PRODUCT.name,
+      brand: PROTOTYPE_PRODUCT.brand,
+      category: PROTOTYPE_PRODUCT.category,
+      shelf_life: shelf ? {
+        days_min: shelf.days_min,
+        days_typical: shelf.days_typical,
+        days_max: shelf.days_max,
+        freezable: shelf.freezable,
+        source: 'Prototype demo barcode',
+        based_on: { location: 'fridge', opened: false },
+      } : null,
+      cached: true,
+      manual_entry_required: false,
+    };
+  }
+
+  // 2. Local items — if user added this barcode manually, recognize instantly.
   const local = await listItems({ status: 'all' });
   const known = local.items.find(i => i.barcode === barcode);
   if (known) {
@@ -114,6 +146,8 @@ export async function scanBarcode(barcode: string): Promise<ScanResult> {
       manual_entry_required: false,
     };
   }
+
+  // 3. Open Food Facts — public API, no auth needed.
   try {
     // Note: User-Agent is a forbidden header in browsers — the browser sets
     // its own; we just rely on that. On native it's fine to omit too.
