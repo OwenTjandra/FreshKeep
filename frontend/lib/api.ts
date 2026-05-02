@@ -90,6 +90,30 @@ import { findShelfLife } from './shelfLifeData';
 const OFF_BASE = 'https://world.openfoodfacts.org/api/v2/product/';
 
 export async function scanBarcode(barcode: string): Promise<ScanResult> {
+  // Check our local items first — if the user added this barcode manually
+  // before, recognize it instantly without a network call.
+  const local = await listItems({ status: 'all' });
+  const known = local.items.find(i => i.barcode === barcode);
+  if (known) {
+    const shelf = known.category ? findShelfLife(known.category, 'fridge', false) : null;
+    return {
+      found: true,
+      barcode,
+      name: known.name,
+      brand: null,
+      category: known.category,
+      shelf_life: shelf ? {
+        days_min: shelf.days_min,
+        days_typical: shelf.days_typical,
+        days_max: shelf.days_max,
+        freezable: shelf.freezable,
+        source: 'You added this manually before',
+        based_on: { location: 'fridge', opened: false },
+      } : null,
+      cached: true,
+      manual_entry_required: false,
+    };
+  }
   try {
     const res = await fetch(`${OFF_BASE}${encodeURIComponent(barcode)}.json`, {
       headers: { 'User-Agent': 'FreshKeep/0.1 (prototype)' },

@@ -135,6 +135,31 @@ export default function Home() {
         </Pressable>
       </View>
 
+      <View style={styles.quickRow}>
+        <Pressable
+          onPress={() => router.push('/scan-receipt')}
+          style={({ pressed }) => [styles.quickCard, pressed && { opacity: 0.85 }]}
+        >
+          <Text style={styles.quickIcon}>📷</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.quickTitle}>Scan a receipt</Text>
+            <Text style={styles.quickSub}>Add a whole grocery trip at once</Text>
+          </View>
+          <Text style={styles.arrow}>→</Text>
+        </Pressable>
+        <Pressable
+          onPress={() => router.push('/stores')}
+          style={({ pressed }) => [styles.quickCard, pressed && { opacity: 0.85 }]}
+        >
+          <Text style={styles.quickIcon}>🛒</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.quickTitle}>Connect a store</Text>
+            <Text style={styles.quickSub}>Costco, Whole Foods, more</Text>
+          </View>
+          <Text style={styles.arrow}>→</Text>
+        </Pressable>
+      </View>
+
       <View style={styles.statsRow}>
         <StatCard num={urgent}   label="Today"     variant="urgent" />
         <StatCard num={thisWeek} label="This week" variant="soon" />
@@ -235,4 +260,25 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 0.3,
   },
+
+  quickRow: {
+    gap: space.sm,
+    marginTop: space.sm,
+    marginBottom: space.md,
+  },
+  quickCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.md,
+    backgroundColor: colors.paper,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    borderRadius: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+  },
+  quickIcon: { fontSize: 22 },
+  quickTitle: { fontFamily: fonts.bodySemi, fontSize: 14, fontWeight: '600', color: colors.ink },
+  quickSub: { fontFamily: fonts.body, fontSize: 12, color: colors.muted, marginTop: 2 },
+  arrow: { fontSize: 18, color: colors.muted },
 });

@@ -14,6 +14,7 @@ const LOCATIONS: ItemLocation[] = ['fridge', 'freezer', 'counter', 'pantry'];
 export default function AddItem() {
   const router = useRouter();
   const [name, setName] = useState('');
+  const [barcode, setBarcode] = useState('');
   const [category, setCategory] = useState<string>('');
   const [location, setLocation] = useState<ItemLocation>('fridge');
   const [opened, setOpened] = useState(false);
@@ -39,6 +40,7 @@ export default function AddItem() {
     try {
       await createItem({
         name: name.trim(),
+        barcode: barcode.trim() || null,
         category: category || null,
         location,
         opened,
@@ -60,6 +62,18 @@ export default function AddItem() {
 
       <Field label="Name">
         <TextInput value={name} onChangeText={setName} placeholder="e.g. Whole milk" placeholderTextColor={colors.muted} style={styles.input} />
+      </Field>
+
+      <Field label="Barcode (optional)">
+        <TextInput
+          value={barcode}
+          onChangeText={setBarcode}
+          placeholder="e.g. 0048001234"
+          placeholderTextColor={colors.muted}
+          keyboardType="number-pad"
+          autoCapitalize="none"
+          style={styles.input}
+        />
       </Field>
 
       <Field label="Category">
