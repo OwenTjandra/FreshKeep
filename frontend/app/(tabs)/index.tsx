@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import {
   View,
   Text,
+  Pressable,
   ScrollView,
   RefreshControl,
   ActivityIndicator,
@@ -12,7 +13,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 
 import { listItems, updateItem, type Item } from '../../lib/api';
 import { writeWidgetCache } from '../../lib/widgetCache';
-import { colors, fonts, sectionLabel, space } from '../../lib/theme';
+import { colors, fonts, hardShadow, sectionLabel, space } from '../../lib/theme';
 import { ScreenHeader } from '../../components/ScreenHeader';
 import { StatCard } from '../../components/StatCard';
 import { ItemCard } from '../../components/ItemCard';
@@ -119,10 +120,20 @@ export default function Home() {
       contentContainerStyle={styles.container}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />}
     >
-      <ScreenHeader
-        title="Your kitchen"
-        subtitle={`${todayLabel} · ${totalTracked} item${totalTracked === 1 ? '' : 's'} tracked`}
-      />
+      <View style={styles.headerRow}>
+        <View style={{ flex: 1 }}>
+          <ScreenHeader
+            title="Your kitchen"
+            subtitle={`${todayLabel} · ${totalTracked} item${totalTracked === 1 ? '' : 's'} tracked`}
+          />
+        </View>
+        <Pressable
+          onPress={() => router.push('/add')}
+          style={({ pressed }) => [styles.addBtn, pressed && { opacity: 0.85 }]}
+        >
+          <Text style={styles.addBtnText}>+ Add</Text>
+        </Pressable>
+      </View>
 
       <View style={styles.statsRow}>
         <StatCard num={urgent}   label="Today"     variant="urgent" />
@@ -200,5 +211,28 @@ const styles = StyleSheet.create({
     marginTop: -space.xs,
     marginBottom: space.sm + 2,
     marginLeft: space.lg + 32,
+  },
+
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: space.sm,
+  },
+  addBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 100,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    backgroundColor: colors.accent,
+    marginTop: 6,
+    ...hardShadow(2),
+  },
+  addBtnText: {
+    color: '#ffffff',
+    fontFamily: fonts.bodySemi,
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 0.3,
   },
 });

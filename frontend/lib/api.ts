@@ -1,47 +1,18 @@
-// API client for the FreshKeep backend.
+// Façade — keeps the same call signatures the screens were using when this
+// file was an HTTP client, but now delegates to local storage. Recipe calls
+// go direct to Anthropic with the user's key (saved in Profile).
 //
-// Base URL precedence:
-//   1. EXPO_PUBLIC_API_URL env var (set in .env or shell)
-//   2. http://10.0.2.2:3000 on Android emulator (the host's localhost)
-//   3. http://localhost:3000 elsewhere
-//
-// On a physical device, set EXPO_PUBLIC_API_URL to your LAN IP (e.g.
-// http://192.168.1.42:3000) before `npm start`. expo-router picks up
-// EXPO_PUBLIC_*  vars from a .env file in the frontend folder.
+// To re-enable the cloud backend later, swap implementations here back to
+// fetch() against EXPO_PUBLIC_API_URL — no screen code needs to change.
 
-import { Platform } from 'react-native';
+import * as storage from './storage';
+import type { EnrichedItem } from './storage';
 
-function defaultBaseUrl() {
-  if (Platform.OS === 'android') return 'http://10.0.2.2:3000';
-  return 'http://localhost:3000';
-}
+// ─── Types re-exported so screens still import them from './api' ─────
+export type ItemLocation = storage.StoredItem['location'];
 
-export const API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_URL || defaultBaseUrl();
+export type Item = EnrichedItem;
 
-async function http<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_BASE_URL}${path}`, {
-    ...init,
-    headers: {
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-      ...(init?.headers || {}),
-    },
-  });
-  if (!res.ok) {
-    let body: any = null;
-    try { body = await res.json(); } catch {}
-    const msg = body?.message || `${res.status} ${res.statusText}`;
-    const err = new Error(msg) as Error & { status: number; code?: string };
-    err.status = res.status;
-    err.code = body?.error;
-    throw err;
-  }
-  if (res.status === 204) return undefined as T;
-  return res.json() as Promise<T>;
-}
-
-// ───────── Scan ─────────
 export type ShelfLife = {
   days_min: number;
   days_typical: number;
@@ -68,114 +39,11 @@ export type ScanResult =
       manual_entry_required: true;
     };
 
-export function scanBarcode(barcode: string) {
-  return http<ScanResult>('/api/scan', {
-    method: 'POST',
-    body: JSON.stringify({ barcode }),
-  });
-}
-
-// ───────── Items ─────────
-export type ItemLocation = 'fridge' | 'freezer' | 'counter' | 'pantry';
-
-export type Item = {
-  id: string;
-  name: string;
-  barcode: string | null;
-  category: string | null;
-  quantity: number;
-  location: ItemLocation;
-  opened: boolean;
-  opened_at: string | null;
-  expiry_date: string;
-  status: 'active' | 'used' | 'tossed' | 'pending';
-  recommended_action:
-    | 'eat_now' | 'eat_soon' | 'freeze_now' | 'use_in_recipe'
-    | 'compost' | 'monitor' | 'safe' | null;
-  action_priority: number | null;
-  action_reason: string | null;
-  user_marked_fine_at: string | null;
-  days_until_expiry: number;
-  freezable: boolean | null;
-};
-
-export function listItems(filters: { status?: string; location?: ItemLocation; opened?: boolean } = {}) {
-  const qs = new URLSearchParams();
-  if (filters.status) qs.set('status', filters.status);
-  if (filters.location) qs.set('location', filters.location);
-  if (filters.opened !== undefined) qs.set('opened', String(filters.opened));
-  const suffix = qs.toString() ? `?${qs}` : '';
-  return http<{ items: Item[] }>(`/api/items${suffix}`);
-}
-
-export function createItem(input: {
-  name: string;
-  expiry_date: string;
-  barcode?: string | null;
-  category?: string | null;
-  quantity?: number;
-  location?: ItemLocation;
-  opened?: boolean;
-}) {
-  return http<Item>('/api/items', {
-    method: 'POST',
-    body: JSON.stringify(input),
-  });
-}
-
-export function updateItem(id: string, patch: Partial<Pick<Item, 'name' | 'category' | 'quantity' | 'location' | 'expiry_date' | 'status'>>) {
-  return http<Item>(`/api/items/${id}`, {
-    method: 'PATCH',
-    body: JSON.stringify(patch),
-  });
-}
-
-export function getItem(id: string) {
-  return http<Item>(`/api/items/${id}`);
-}
-
-export function markItemOpened(id: string) {
-  return http<Item>(`/api/items/${id}/open`, { method: 'PATCH' });
-}
-
-export function markItemStillFine(id: string) {
-  return http<Item>(`/api/items/${id}/mark-fine`, { method: 'PATCH' });
-}
-
-export function deleteItem(id: string) {
-  return http<void>(`/api/items/${id}`, { method: 'DELETE' });
-}
-
-// ───────── Recipes ─────────
-export type RecipeIngredient = {
-  name: string;
-  amount: string;
-  expiring: boolean;
-};
-
+export type RecipeIngredient = { name: string; amount: string; expiring: boolean };
 export type RecipeResponse =
-  | {
-      type: 'recipe';
-      title: string;
-      time: string;
-      difficulty: 'easy' | 'medium' | 'hard';
-      ingredients: RecipeIngredient[];
-      steps: string[];
-    }
-  | {
-      type: 'reminder';
-      title: string;
-      tip: string;
-    };
+  | { type: 'recipe'; title: string; time: string; difficulty: 'easy' | 'medium' | 'hard'; ingredients: RecipeIngredient[]; steps: string[] }
+  | { type: 'reminder'; title: string; tip: string };
 
-export function suggestRecipe(itemId: string) {
-  return http<RecipeResponse>('/api/recipes/suggest', {
-    method: 'POST',
-    body: JSON.stringify({ item_id: itemId }),
-  });
-}
-
-// ───────── Users ─────────
 export type Me = {
   id: string;
   email: string | null;
@@ -183,28 +51,215 @@ export type Me = {
   onboarded_at: string | null;
 };
 
-export function getMe() {
-  return http<Me>('/api/users/me');
+// ─── Items ───────────────────────────────────────────────────────────
+export const listItems    = storage.listItems;
+export const getItem      = storage.getItem;
+export const createItem   = storage.createItem;
+export const updateItem   = storage.updateItem;
+export const deleteItem   = storage.deleteItem;
+export const markItemOpened    = storage.markItemOpened;
+export const markItemStillFine = storage.markItemStillFine;
+
+// ─── User ────────────────────────────────────────────────────────────
+export async function getMe(): Promise<Me> {
+  const u = await storage.getMe();
+  return {
+    id: 'local',
+    email: 'you@local',
+    fridge_temp_setting: u.fridge_temp_setting,
+    onboarded_at: u.onboarded_at,
+  };
 }
 
-export function updateMe(patch: { fridge_temp_setting?: number; onboarded?: boolean }) {
-  return http<Me>('/api/users/me', {
-    method: 'PATCH',
-    body: JSON.stringify(patch),
+export async function updateMe(patch: { fridge_temp_setting?: number; onboarded?: boolean }): Promise<Me> {
+  const merged = await storage.updateMe({
+    ...(patch.fridge_temp_setting !== undefined ? { fridge_temp_setting: patch.fridge_temp_setting } : {}),
+    ...(patch.onboarded ? { onboarded_at: new Date().toISOString() } : {}),
   });
+  return {
+    id: 'local',
+    email: 'you@local',
+    fridge_temp_setting: merged.fridge_temp_setting,
+    onboarded_at: merged.onboarded_at,
+  };
 }
 
-// ───────── Notifications ─────────
-export function registerFcmToken(token: string, deviceLabel?: string) {
-  return http<{ ok: true }>('/api/notifications/register-token', {
+// ─── Barcode scan — direct to Open Food Facts (no auth) ──────────────
+import { findShelfLife } from './shelfLifeData';
+
+const OFF_BASE = 'https://world.openfoodfacts.org/api/v2/product/';
+
+export async function scanBarcode(barcode: string): Promise<ScanResult> {
+  try {
+    const res = await fetch(`${OFF_BASE}${encodeURIComponent(barcode)}.json`, {
+      headers: { 'User-Agent': 'FreshKeep/0.1 (prototype)' },
+    });
+    if (res.status === 404) return { found: false, barcode, manual_entry_required: true };
+    if (!res.ok) throw new Error(`Open Food Facts ${res.status}`);
+    const data = await res.json();
+    if (!data || data.status === 0 || !data.product) {
+      return { found: false, barcode, manual_entry_required: true };
+    }
+    const p = data.product;
+    const tags: string[] = Array.isArray(p.categories_tags) ? p.categories_tags : [];
+    const category = mapCategory(tags);
+    const shelf = category ? findShelfLife(category, 'fridge', false) : null;
+    return {
+      found: true,
+      barcode,
+      name: p.product_name || null,
+      brand: (p.brands || '').split(',')[0].trim() || null,
+      category,
+      shelf_life: shelf ? {
+        days_min: shelf.days_min,
+        days_typical: shelf.days_typical,
+        days_max: shelf.days_max,
+        freezable: shelf.freezable,
+        source: 'USDA FSIS FoodKeeper',
+        based_on: { location: 'fridge', opened: false },
+      } : null,
+      cached: false,
+      manual_entry_required: !category,
+    };
+  } catch {
+    return { found: false, barcode, manual_entry_required: true };
+  }
+}
+
+const CATEGORY_RULES: Array<[string, string[]]> = [
+  ['dairy_yogurt',       ['yogurt', 'yoghurt']],
+  ['dairy_cheese_hard',  ['cheddar', 'parmesan', 'parmigiano', 'gouda', 'gruyere', 'manchego', 'pecorino', 'emmental', 'hard-cheese']],
+  ['dairy_cheese_soft',  ['brie', 'camembert', 'ricotta', 'cottage-cheese', 'cream-cheese', 'feta', 'mozzarella', 'soft-cheese']],
+  ['dairy_butter',       ['butter']],
+  ['dairy_milk',         ['milk']],
+  ['meat_beef_ground',   ['ground-beef', 'minced-beef', 'hamburger-meat']],
+  ['meat_chicken',       ['chicken', 'poultry']],
+  ['meat_pork',          ['pork', 'bacon', 'sausage', 'ham']],
+  ['meat_fish',          ['fish', 'salmon', 'tuna', 'cod', 'tilapia', 'haddock', 'mackerel']],
+  ['meat_beef',          ['beef', 'steak']],
+  ['deli',               ['deli', 'lunch-meat', 'cold-cut', 'sliced-meat']],
+  ['eggs',               ['egg', 'eggs']],
+  ['bread',              ['bread', 'baguette', 'loaf', 'brioche', 'sourdough', 'rolls']],
+  ['produce_berries',    ['berry', 'berries', 'strawberr', 'blueberr', 'raspberr', 'blackberr']],
+  ['produce_leafy',      ['leafy', 'spinach', 'lettuce', 'kale', 'arugula', 'rocket', 'romaine', 'mixed-greens']],
+  ['produce_hard_veg',   ['carrot', 'broccoli', 'celery', 'cabbage', 'cauliflower', 'brussels-sprout']],
+  ['produce_soft_fruit', ['peach', 'plum', 'tomato', 'avocado', 'mango', 'nectarine', 'apricot']],
+  ['produce_hard_fruit', ['apple', 'pear']],
+  ['pantry_canned',      ['canned', 'tinned']],
+  ['pantry_dry_goods',   ['rice', 'pasta', 'noodles', 'flour', 'sugar', 'cereal', 'oats', 'lentil', 'bean']],
+];
+
+function mapCategory(tags: string[]): string | null {
+  if (!Array.isArray(tags) || tags.length === 0) return null;
+  const haystack = tags.join(' ').toLowerCase();
+  for (const [ourCategory, keywords] of CATEGORY_RULES) {
+    for (const kw of keywords) {
+      if (haystack.includes(kw)) return ourCategory;
+    }
+  }
+  return null;
+}
+
+// ─── Recipes — direct to Anthropic, key from Profile ─────────────────
+import { COOKABLE_CATEGORIES } from './engine';
+
+export async function suggestRecipe(itemId: string): Promise<RecipeResponse> {
+  const item = await getItem(itemId);
+  if (!item.category || !COOKABLE_CATEGORIES.has(item.category)) {
+    return reminderForItem(item);
+  }
+  const user = await storage.getMe();
+  const apiKey = user.anthropic_api_key;
+  if (!apiKey) {
+    throw new Error('Set your Anthropic API key in Profile first to enable recipe suggestions.');
+  }
+
+  const SYSTEM = `You are a helpful cooking assistant for FreshKeep, an app that helps users use up ingredients before they spoil.
+
+Suggest exactly ONE simple recipe (≤30 min, easy/medium) using the user's expiring ingredient and these pantry staples: garlic, olive oil, salt, pepper, onion, eggs, rice, pasta.
+
+If recommended_action is "freeze_now", prefer batch-cook recipes that freeze well.
+
+Mark each ingredient with "expiring": true if it's the user's tracked item, false otherwise. Steps should be concise — one short sentence each, 4–8 steps.`;
+
+  const TOOL = {
+    name: 'suggest_recipe',
+    description: 'Return a single recipe.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        title:      { type: 'string' },
+        time:       { type: 'string' },
+        difficulty: { type: 'string', enum: ['easy', 'medium', 'hard'] },
+        ingredients: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              name: { type: 'string' }, amount: { type: 'string' }, expiring: { type: 'boolean' },
+            },
+            required: ['name', 'amount', 'expiring'],
+          },
+        },
+        steps: { type: 'array', items: { type: 'string' } },
+      },
+      required: ['title', 'time', 'difficulty', 'ingredients', 'steps'],
+    },
+  };
+
+  const userMsg =
+    `Item: ${item.name}\n` +
+    `Category: ${item.category}\n` +
+    `Recommended action: ${item.recommended_action}\n` +
+    `Days until expiry: ${item.days_until_expiry}\n` +
+    `Currently ${item.opened ? 'opened' : 'unopened'} in the ${item.location}.`;
+
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
-    body: JSON.stringify({ token, device_label: deviceLabel }),
+    headers: {
+      'Content-Type': 'application/json',
+      'anthropic-version': '2023-06-01',
+      'x-api-key': apiKey,
+      // Required when calling Anthropic directly from a browser.
+      'anthropic-dangerous-direct-browser-access': 'true',
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-5',
+      max_tokens: 1024,
+      system: SYSTEM,
+      tools: [TOOL],
+      tool_choice: { type: 'tool', name: 'suggest_recipe' },
+      messages: [{ role: 'user', content: userMsg }],
+    }),
   });
+  if (!res.ok) {
+    const txt = await res.text();
+    throw new Error(`Anthropic API ${res.status}: ${txt.slice(0, 200)}`);
+  }
+  const data = await res.json();
+  const toolUse = (data.content || []).find((c: any) => c.type === 'tool_use');
+  if (!toolUse) throw new Error('No tool_use block in Anthropic response');
+  return { type: 'recipe', ...(toolUse.input as any) };
 }
 
-export function sendTestNotification() {
-  return http<{ sent: boolean; reason?: string; item_id?: string; action?: string }>(
-    '/api/notifications/test',
-    { method: 'POST' }
-  );
+function reminderForItem(item: { name: string; category: string | null }): RecipeResponse {
+  const tips: Record<string, string> = {
+    dairy_milk:        'Drink as-is, add to coffee or smoothies, or use in cereal.',
+    dairy_yogurt:      'Have it for breakfast with fruit and granola, or use as a marinade base.',
+    dairy_cheese_hard: 'Grate over pasta or rice, melt on toast, or add to a charcuterie board.',
+    dairy_cheese_soft: 'Spread on crackers, dollop on a salad, or warm and dip with bread.',
+    dairy_butter:      'Use generously when cooking, on toast, or in baking.',
+    produce_hard_fruit:'Eat fresh with peanut butter, slice into oatmeal, or add to a salad.',
+    deli:              'Build a sandwich, wrap it, or chop into a salad.',
+    pantry_canned:     'Once opened, transfer to a container and use within 3–5 days.',
+  };
+  return {
+    type: 'reminder',
+    title: `Use up your ${item.name}`,
+    tip: (item.category && tips[item.category]) || 'Use this item soon to avoid waste.',
+  };
 }
+
+// ─── No-op stubs for token registration / test push (kept so screens compile)
+export async function registerFcmToken(_t: string, _l?: string) { return { ok: true as const }; }
+export async function sendTestNotification() { return { sent: false, reason: 'local-only prototype' as string }; }
