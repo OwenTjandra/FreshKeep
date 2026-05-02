@@ -32,6 +32,7 @@ The user has flagged these as load-bearing — explain reasoning before writing 
 
 - **Step 5 — Expiration intelligence engine.** The most important step in the project. Cover all listed edge cases (opened items, frozen items, "looks fine" 24-hour grace period). Write unit tests for ≥8 scenarios.
 - **Step 6 — Fridge temperature multipliers.** The multiplier table values are educated guesses; treat them as a starting point, not gospel. Document the table in code so they're easy to tune later.
+- **Step 14 — Contextual notifications.** Don't just say "milk expires in 3 days." Use the engine's `recommended_action` + item state (opened/unopened, location, category) to write *contextual nudges* — e.g. *"You haven't opened that yogurt yet and it expires tomorrow — have it for breakfast!"* Time them for morning local time (target 8–10am window). **Never send between 11pm and 7am.** One push per day max, prioritizing the highest-priority item.
 - **Step 20 — Bayesian shelf-life adjuster.** Genuinely optional. Don't let "we should add ML" delay shipping. Skip until the rule engine is in production with real users.
 
 ## Things to avoid
