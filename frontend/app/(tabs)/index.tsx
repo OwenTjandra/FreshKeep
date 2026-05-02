@@ -4,8 +4,6 @@ import {
   Text,
   ScrollView,
   RefreshControl,
-  Pressable,
-  Button,
   ActivityIndicator,
   StyleSheet,
   Alert,
@@ -14,36 +12,44 @@ import { useFocusEffect, useRouter } from 'expo-router';
 
 import { listItems, updateItem, type Item } from '../../lib/api';
 import { writeWidgetCache } from '../../lib/widgetCache';
+import { colors, fonts, sectionLabel, space } from '../../lib/theme';
+import { ScreenHeader } from '../../components/ScreenHeader';
+import { StatCard } from '../../components/StatCard';
+import { ItemCard } from '../../components/ItemCard';
+import { Button } from '../../components/Button';
 
-// ───────────────────────────────────────────────────────────
-// Section config — order matches the user's spec for Step 9.
-// ───────────────────────────────────────────────────────────
+// Map our category taxonomy → emoji for the item-card icons.
+const CATEGORY_EMOJI: Record<string, string> = {
+  dairy_milk: '🥛', dairy_yogurt: '🥄', dairy_cheese_hard: '🧀', dairy_cheese_soft: '🧀',
+  dairy_butter: '🧈', meat_chicken: '🍗', meat_beef: '🥩', meat_beef_ground: '🥩',
+  meat_pork: '🥓', meat_fish: '🐟', produce_leafy: '🥬', produce_hard_veg: '🥕',
+  produce_soft_fruit: '🍑', produce_hard_fruit: '🍎', produce_berries: '🍓',
+  eggs: '🥚', bread: '🍞', deli: '🥪', pantry_dry_goods: '🌾', pantry_canned: '🥫',
+};
 
 type SectionKey = 'eat_now' | 'eat_soon' | 'freeze_now' | 'use_in_recipe' | 'past' | 'safe';
-
 const SECTIONS: Array<{
   key: SectionKey;
   title: string;
   actions: Array<NonNullable<Item['recommended_action']>>;
-  defaultCollapsed?: boolean;
 }> = [
   { key: 'eat_now',       title: 'Eat today',            actions: ['eat_now'] },
   { key: 'eat_soon',      title: 'Use this week',        actions: ['eat_soon'] },
   { key: 'freeze_now',    title: 'Freeze now to save',   actions: ['freeze_now'] },
   { key: 'use_in_recipe', title: 'Cook tonight',         actions: ['use_in_recipe'] },
   { key: 'past',          title: 'Past date — check it', actions: ['compost', 'monitor'] },
-  { key: 'safe',          title: 'All good',             actions: ['safe'], defaultCollapsed: true },
+  { key: 'safe',          title: 'All good',             actions: ['safe'] },
 ];
 
-// ───────────────────────────────────────────────────────────
-// Screen
-// ───────────────────────────────────────────────────────────
+function emojiFor(category: string | null): string {
+  if (!category) return '🍽️';
+  return CATEGORY_EMOJI[category] ?? '🍽️';
+}
 
 export default function Home() {
   const router = useRouter();
   const [items, setItems] = useState<Item[] | null>(null);
   const [refreshing, setRefreshing] = useState(false);
-  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({ safe: true });
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -51,8 +57,6 @@ export default function Home() {
       setError(null);
       const r = await listItems({ status: 'active' });
       setItems(r.items);
-      // Step 11: keep the widget's shared JSON in sync on every refresh.
-      // Failures here are non-fatal — log and move on.
       writeWidgetCache(r.items).catch((e) => console.warn('widget cache write failed:', e));
     } catch (err: any) {
       setError(err?.message || 'Failed to load');
@@ -60,7 +64,6 @@ export default function Home() {
     }
   }, []);
 
-  // Reload on every focus — items change after Set Details / mark frozen / item detail actions.
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
   async function onRefresh() {
@@ -81,12 +84,12 @@ export default function Home() {
   if (items === null && !error) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator />
+        <ActivityIndicator color={colors.accent} />
       </View>
     );
   }
 
-  // Bucket items into sections by their action.
+  // Bucket items.
   const grouped: Record<SectionKey, Item[]> = {
     eat_now: [], eat_soon: [], freeze_now: [], use_in_recipe: [], past: [], safe: [],
   };
@@ -94,10 +97,9 @@ export default function Home() {
     const a = item.recommended_action;
     const sec = a ? SECTIONS.find(s => (s.actions as string[]).includes(a)) : undefined;
     if (sec) grouped[sec.key].push(item);
-    else grouped.safe.push(item); // null action falls through as safe-ish
+    else grouped.safe.push(item);
   }
 
-  // Stat cards. "Urgent" = priority-1 actions; "This week" = priority-2; "Fresh" = safe.
   const urgent =
     grouped.eat_now.length +
     grouped.use_in_recipe.filter(i => i.action_priority === 1).length +
@@ -108,15 +110,24 @@ export default function Home() {
     grouped.use_in_recipe.filter(i => i.action_priority === 2).length;
   const fresh = grouped.safe.length;
 
+  const totalTracked = items?.length ?? 0;
+  const todayLabel = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+
   return (
     <ScrollView
+      style={styles.scroll}
       contentContainerStyle={styles.container}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />}
     >
+      <ScreenHeader
+        title="Your kitchen"
+        subtitle={`${todayLabel} · ${totalTracked} item${totalTracked === 1 ? '' : 's'} tracked`}
+      />
+
       <View style={styles.statsRow}>
-        <Stat label="Urgent" value={urgent} />
-        <Stat label="This week" value={thisWeek} />
-        <Stat label="Fresh" value={fresh} />
+        <StatCard num={urgent}   label="Today"     variant="urgent" />
+        <StatCard num={thisWeek} label="This week" variant="soon" />
+        <StatCard num={fresh}    label="Fresh"     variant="fresh" />
       </View>
 
       {error && <Text style={styles.error}>{error}</Text>}
@@ -124,30 +135,27 @@ export default function Home() {
       {SECTIONS.map(sec => {
         const list = grouped[sec.key];
         if (list.length === 0) return null;
-        const isCollapsed = collapsed[sec.key] ?? !!sec.defaultCollapsed;
         return (
-          <View key={sec.key} style={styles.section}>
-            <Pressable
-              onPress={() => setCollapsed(c => ({ ...c, [sec.key]: !isCollapsed }))}
-              style={styles.sectionHeader}
-            >
-              <Text style={styles.sectionTitle}>{sec.title} ({list.length})</Text>
-              <Text style={styles.sectionToggle}>{isCollapsed ? '▾' : '▴'}</Text>
-            </Pressable>
-            {!isCollapsed && list.map(item => (
-              <ItemRow
-                key={item.id}
-                item={item}
-                onPress={() => router.push(`/item/${item.id}`)}
-                onCookTonight={
-                  sec.key === 'use_in_recipe'
-                    ? () => router.push(`/recipe/${item.id}`)
-                    : undefined
-                }
-                onMarkFrozen={
-                  sec.key === 'freeze_now' ? () => markFrozen(item) : undefined
-                }
-              />
+          <View key={sec.key} style={{ marginTop: space.md }}>
+            <Text style={sectionLabel}>{sec.title}</Text>
+            {list.map(item => (
+              <View key={item.id}>
+                <ItemCard
+                  item={item}
+                  emoji={emojiFor(item.category)}
+                  onPress={() => router.push(`/item/${item.id}`)}
+                />
+                {sec.key === 'freeze_now' && (
+                  <View style={styles.inlineAction}>
+                    <Button title="Mark frozen" variant="secondary" onPress={() => markFrozen(item)} />
+                  </View>
+                )}
+                {sec.key === 'use_in_recipe' && (
+                  <View style={styles.inlineAction}>
+                    <Button title="Get recipe →" variant="secondary" onPress={() => router.push(`/recipe/${item.id}`)} />
+                  </View>
+                )}
+              </View>
             ))}
           </View>
         );
@@ -155,103 +163,42 @@ export default function Home() {
 
       {(items?.length ?? 0) === 0 && !error && (
         <Text style={styles.empty}>
-          No items yet. Tap the Scan tab to add one.
+          No items yet. Tap the orange button below to scan one.
         </Text>
       )}
     </ScrollView>
   );
 }
 
-// ───────────────────────────────────────────────────────────
-// Bits
-// ───────────────────────────────────────────────────────────
-
-function Stat({ label, value }: { label: string; value: number }) {
-  return (
-    <View style={styles.stat}>
-      <Text style={styles.statValue}>{value}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
-    </View>
-  );
-}
-
-function ItemRow({
-  item,
-  onPress,
-  onMarkFrozen,
-  onCookTonight,
-}: {
-  item: Item;
-  onPress: () => void;
-  onMarkFrozen?: () => void;
-  onCookTonight?: () => void;
-}) {
-  return (
-    <Pressable onPress={onPress} style={styles.itemRow}>
-      <View style={{ flex: 1 }}>
-        <Text style={styles.itemName}>{item.name}</Text>
-        <Text style={styles.itemMeta}>
-          {formatDays(item.days_until_expiry)}
-          {item.opened ? ' · opened' : ''}
-          {item.location !== 'fridge' ? ` · ${item.location}` : ''}
-        </Text>
-        {item.action_reason && (
-          <Text style={styles.itemReason}>{item.action_reason}</Text>
-        )}
-      </View>
-      {onMarkFrozen && <Button title="Mark frozen" onPress={onMarkFrozen} />}
-      {onCookTonight && <Button title="Recipe" onPress={onCookTonight} />}
-    </Pressable>
-  );
-}
-
-function formatDays(d: number): string {
-  if (d < 0) return `${-d}d past`;
-  if (d === 0) return 'today';
-  if (d === 1) return 'tomorrow';
-  return `${d}d left`;
-}
-
-// ───────────────────────────────────────────────────────────
-// Styles — minimal; visual polish comes later.
-// ───────────────────────────────────────────────────────────
-
 const styles = StyleSheet.create({
-  container: { padding: 16, gap: 12, paddingBottom: 32 },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  scroll: { backgroundColor: colors.bg },
+  container: { padding: space.lg, paddingTop: space['2xl'], paddingBottom: 60 },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.bg },
 
-  statsRow: { flexDirection: 'row', gap: 12 },
-  stat: {
-    flex: 1, padding: 12, backgroundColor: '#f3f3f3', borderRadius: 8, alignItems: 'center',
-  },
-  statValue: { fontSize: 24, fontWeight: '600' },
-  statLabel: { fontSize: 12, color: '#666', marginTop: 2 },
-
-  error: { color: '#a00', backgroundColor: '#fee', padding: 8, borderRadius: 6 },
-  empty: { color: '#666', textAlign: 'center', marginTop: 32 },
-
-  section: { gap: 4 },
-  sectionHeader: {
+  statsRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 8,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#ccc',
+    gap: space.sm,
   },
-  sectionTitle: { fontSize: 16, fontWeight: '600' },
-  sectionToggle: { fontSize: 16, color: '#888' },
 
-  itemRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 4,
-    gap: 8,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#eee',
+  error: {
+    color: colors.red,
+    backgroundColor: colors.urgentBg,
+    padding: space.sm + 2,
+    borderRadius: 6,
+    marginTop: space.md,
+    fontFamily: fonts.body,
   },
-  itemName: { fontSize: 15, fontWeight: '500' },
-  itemMeta: { fontSize: 13, color: '#666', marginTop: 2 },
-  itemReason: { fontSize: 12, color: '#888', marginTop: 4, fontStyle: 'italic' },
+
+  empty: {
+    color: colors.muted,
+    fontFamily: fonts.body,
+    textAlign: 'center',
+    marginTop: 60,
+  },
+
+  inlineAction: {
+    marginTop: -space.xs,
+    marginBottom: space.sm + 2,
+    marginLeft: space.lg + 32,
+  },
 });

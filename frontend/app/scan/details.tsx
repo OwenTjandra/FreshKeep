@@ -1,15 +1,15 @@
 import { useState, useMemo } from 'react';
-import { View, Text, TextInput, Button, Switch, StyleSheet, ScrollView, Alert, Platform } from 'react-native';
+import { View, Text, TextInput, Switch, StyleSheet, ScrollView, Alert, Platform } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Picker } from '@react-native-picker/picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
 import { createItem, type ScanResult, type ItemLocation } from '../../lib/api';
+import { colors, fonts, cardBase, space } from '../../lib/theme';
+import { Button } from '../../components/Button';
 
 const LOCATIONS: ItemLocation[] = ['fridge', 'freezer', 'counter', 'pantry'];
 
-// Set Details screen — review/edit the scanned product before saving.
-// Receives `result` (JSON-encoded ScanResult) and `barcode` as params.
 export default function SetDetails() {
   const router = useRouter();
   const params = useLocalSearchParams<{ result?: string; barcode?: string }>();
@@ -27,7 +27,7 @@ export default function SetDetails() {
   const [location, setLocation] = useState<ItemLocation>('fridge');
   const [opened, setOpened] = useState<boolean>(false);
   const [expiryDate, setExpiryDate] = useState<Date>(daysFromNow(initialDays));
-  const [showDatePicker, setShowDatePicker] = useState(Platform.OS === 'ios'); // iOS uses inline; Android uses dialog
+  const [showDatePicker, setShowDatePicker] = useState(Platform.OS === 'ios');
   const [saving, setSaving] = useState(false);
 
   async function onSave() {
@@ -55,47 +55,47 @@ export default function SetDetails() {
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.heading}>Set Details</Text>
+    <ScrollView style={styles.scroll} contentContainerStyle={styles.container}>
+      <Text style={styles.heading}>Set details</Text>
+      <Text style={styles.sub}>Confirm what's on the package, then save.</Text>
 
       {scan?.error && (
-        <Text style={styles.warn}>Scan service error: {scan.error}. You can still enter manually.</Text>
+        <View style={styles.warn}>
+          <Text style={styles.warnText}>Scan service error: {scan.error}. You can still enter manually.</Text>
+        </View>
       )}
-      {!found && (
-        <Text style={styles.warn}>
-          {scan?.barcode ? `Barcode ${scan.barcode} not in Open Food Facts.` : 'Manual entry.'}
-        </Text>
+      {!found && !scan?.error && (
+        <View style={styles.warn}>
+          <Text style={styles.warnText}>
+            {scan?.barcode ? `Barcode ${scan.barcode} not in our database.` : 'Manual entry.'}
+          </Text>
+        </View>
       )}
 
       <Field label="Name">
-        <TextInput value={name} onChangeText={setName} placeholder="e.g. Whole milk" style={styles.input} />
+        <TextInput value={name} onChangeText={setName} placeholder="e.g. Whole milk" placeholderTextColor={colors.muted} style={styles.input} />
       </Field>
 
       <Field label="Category">
-        <TextInput
-          value={category}
-          onChangeText={setCategory}
-          placeholder="e.g. dairy_milk"
-          autoCapitalize="none"
-          style={styles.input}
-        />
+        <TextInput value={category} onChangeText={setCategory} placeholder="e.g. dairy_milk" placeholderTextColor={colors.muted} autoCapitalize="none" style={styles.input} />
       </Field>
 
       <Field label="Location">
-        <Picker selectedValue={location} onValueChange={(v) => setLocation(v as ItemLocation)}>
-          {LOCATIONS.map((loc) => (
-            <Picker.Item key={loc} label={loc} value={loc} />
-          ))}
-        </Picker>
+        <View style={styles.pickerWrap}>
+          <Picker selectedValue={location} onValueChange={(v) => setLocation(v as ItemLocation)}>
+            {LOCATIONS.map((loc) => (<Picker.Item key={loc} label={cap(loc)} value={loc} />))}
+          </Picker>
+        </View>
       </Field>
 
-      <Field label="Already opened?">
-        <Switch value={opened} onValueChange={setOpened} />
-      </Field>
+      <View style={styles.switchRow}>
+        <Text style={styles.label}>Already opened?</Text>
+        <Switch value={opened} onValueChange={setOpened} trackColor={{ true: colors.accent }} />
+      </View>
 
       <Field label="Expiry date">
         {Platform.OS === 'android' && (
-          <Button title={toIsoDate(expiryDate)} onPress={() => setShowDatePicker(true)} />
+          <Button title={toIsoDate(expiryDate)} variant="secondary" onPress={() => setShowDatePicker(true)} />
         )}
         {showDatePicker && (
           <DateTimePicker
@@ -109,7 +109,7 @@ export default function SetDetails() {
         )}
       </Field>
 
-      <View style={{ height: 16 }} />
+      <View style={{ height: space.lg }} />
       <Button title={saving ? 'Saving…' : 'Save'} onPress={onSave} disabled={saving} />
     </ScrollView>
   );
@@ -124,6 +124,8 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
+function cap(s: string) { return s.charAt(0).toUpperCase() + s.slice(1); }
+
 function daysFromNow(n: number): Date {
   const d = new Date();
   d.setDate(d.getDate() + n);
@@ -131,7 +133,6 @@ function daysFromNow(n: number): Date {
 }
 
 function toIsoDate(d: Date): string {
-  // YYYY-MM-DD in local time (matches the backend's DATE column).
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
@@ -139,10 +140,33 @@ function toIsoDate(d: Date): string {
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 16, gap: 8 },
-  heading: { fontSize: 22, fontWeight: '600', marginBottom: 8 },
-  field: { gap: 4 },
-  label: { fontSize: 14, color: '#666', marginTop: 8 },
-  input: { borderWidth: 1, borderColor: '#ccc', borderRadius: 6, padding: 10 },
-  warn: { color: '#a40', backgroundColor: '#fff6e0', padding: 8, borderRadius: 6 },
+  scroll: { backgroundColor: colors.bg },
+  container: { padding: space.lg, paddingTop: space.xl, paddingBottom: 60, gap: space.sm },
+
+  heading: { fontFamily: fonts.serif, fontSize: 28, fontWeight: '800', color: colors.ink, letterSpacing: -0.5 },
+  sub: { fontFamily: fonts.body, fontSize: 13, color: colors.muted, marginBottom: space.lg },
+
+  warn: { ...cardBase, backgroundColor: colors.soonBg, marginBottom: space.md },
+  warnText: { fontFamily: fonts.body, fontSize: 13, color: colors.ink, lineHeight: 18 },
+
+  field: { gap: 6, marginTop: space.sm },
+  label: { fontFamily: fonts.bodyMedium, fontSize: 12, color: colors.muted, textTransform: 'uppercase', letterSpacing: 0.8 },
+
+  input: {
+    backgroundColor: colors.paper,
+    borderWidth: 1.5, borderColor: colors.border, borderRadius: 14,
+    paddingHorizontal: space.md, paddingVertical: 12,
+    fontFamily: fonts.body, fontSize: 15, color: colors.ink,
+  },
+
+  pickerWrap: {
+    backgroundColor: colors.paper,
+    borderWidth: 1.5, borderColor: colors.border, borderRadius: 14,
+    overflow: 'hidden',
+  },
+
+  switchRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    marginTop: space.md, paddingVertical: space.sm,
+  },
 });
