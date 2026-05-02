@@ -1,0 +1,23 @@
+{
+  "name": "freshkeep-backend",
+  "version": "0.1.0",
+  "description": "FreshKeep API — Express + Postgres backend for food expiry tracking",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "migrate": "echo 'Migrations arrive in Step 1' && exit 1",
+    "seed": "echo 'Seeds arrive in Step 1' && exit 1",
+    "test": "echo 'Tests arrive in Step 5' && exit 1"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.2"
+  },
+  "devDependencies": {},
+  "engines": {
+    "node": ">=20"
+  }
+}
