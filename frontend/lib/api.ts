@@ -89,7 +89,11 @@ export type Item = {
   opened_at: string | null;
   expiry_date: string;
   status: 'active' | 'used' | 'tossed' | 'pending';
-  recommended_action: string | null;
+  recommended_action:
+    | 'eat_now' | 'eat_soon' | 'freeze_now' | 'use_in_recipe'
+    | 'compost' | 'monitor' | 'safe' | null;
+  action_priority: number | null;
+  action_reason: string | null;
   user_marked_fine_at: string | null;
   days_until_expiry: number;
 };

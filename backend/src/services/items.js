@@ -24,15 +24,23 @@ function toIsoDateString(d) {
 /**
  * Add derived fields:
  *   - days_until_expiry  (computed in SQL when listing; passed through here)
- *   - recommended_action (from the engine — currently a stub returning null)
+ *   - recommended_action (string from engine, e.g. 'eat_now') | null
+ *   - action_priority    1–5 | null
+ *   - action_reason      short UI string | null
  *   - expiry_date        normalized to "YYYY-MM-DD"
+ *
+ * The engine returns {action, priority, reason}; we splat those onto the
+ * item as flat fields so the frontend can treat them like any other column.
  */
 function enrich(row, user) {
   const enriched = {
     ...row,
     expiry_date: toIsoDateString(row.expiry_date),
   };
-  enriched.recommended_action = computeRecommendedAction(enriched, user);
+  const out = computeRecommendedAction(enriched, user);
+  enriched.recommended_action = out?.action ?? null;
+  enriched.action_priority    = out?.priority ?? null;
+  enriched.action_reason      = out?.reason ?? null;
   return enriched;
 }
 
