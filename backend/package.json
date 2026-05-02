@@ -7,14 +7,15 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
-    "migrate": "echo 'Migrations arrive in Step 1' && exit 1",
-    "seed": "echo 'Seeds arrive in Step 1' && exit 1",
+    "migrate": "node src/db/migrate.js",
+    "seed": "node src/db/seeds/seed.js",
     "test": "echo 'Tests arrive in Step 5' && exit 1"
   },
   "dependencies": {
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
-    "express": "^4.21.2"
+    "express": "^4.21.2",
+    "pg": "^8.13.1"
   },
   "devDependencies": {},
   "engines": {
