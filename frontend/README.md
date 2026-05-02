@@ -25,22 +25,45 @@ app/
 
 Step 7 set up the **routing only** — every screen is placeholder text. Feature code arrives in later steps.
 
-## First-time setup (development build)
+## Getting an APK
+
+Two paths. **EAS Build is the easy one** — no Android Studio install needed.
+
+### Option A — EAS Build (cloud, ~20 min, no local Android tooling required)
 
 ```bash
-# Install JS deps
+cd "/Users/owentjandra/Documents/FreshKeep/frontend"
 npm install
+npx expo install --check        # pin SDK-compatible versions
 
-# Generate native projects (creates android/ and ios/)
-npx expo prebuild
+# One-time
+npm install -g eas-cli          # or use npx
+npx eas-cli login               # creates a free Expo account if you don't have one
+npx eas-cli build:configure     # uses eas.json already in this repo
 
-# Build & install on a connected Android device or emulator
-npx expo run:android
-
-# Once installed, future iterations:
-npm start
-# Then press 'a' to launch on Android, or scan the QR code with the dev client app
+# Build the preview APK
+npx eas-cli build --platform android --profile preview
+# Wait ~15-20 min. EAS prints a URL when done — download the APK from there
+# and sideload it to your S25+ (transfer via USB, email, or scan the QR code
+# from the build page on the phone).
 ```
+
+The `preview` profile in `eas.json` produces an installable APK (not an AAB) so you can sideload directly. Use the `development` profile if you want a dev-client build that hot-reloads from `npm start`.
+
+### Option B — Local build (need Android Studio + JDK + SDK first)
+
+```bash
+npm install
+npx expo prebuild               # generates android/ ios/
+npx expo run:android            # builds + installs on a connected device or emulator
+```
+
+This requires:
+- Android Studio (~5 GB download)
+- JDK 17 (Android Studio installs this)
+- An emulator or a USB-connected device with Developer mode + USB debugging on
+
+Use Option A if you don't already have Android Studio set up.
 
 If `npm install` warns about peer-dep / Expo-SDK version mismatches, run `npx expo install --check` to auto-pin compatible versions.
 
