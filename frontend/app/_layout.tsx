@@ -9,6 +9,7 @@ export default function RootLayout() {
         <Stack.Screen name="onboarding" />
         <Stack.Screen name="item/[id]" options={{ headerShown: true, title: 'Item' }} />
         <Stack.Screen name="recipe/[id]" options={{ headerShown: true, title: 'Recipe' }} />
+        <Stack.Screen name="scan/details" options={{ headerShown: true, title: 'Set Details' }} />
       </Stack>
       <StatusBar style="auto" />
     </>

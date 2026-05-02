@@ -9,7 +9,10 @@
     "prebuild": "expo prebuild"
   },
   "dependencies": {
+    "@react-native-community/datetimepicker": "8.4.5",
+    "@react-native-picker/picker": "2.11.2",
     "expo": "~54.0.33",
+    "expo-camera": "~17.0.0",
     "expo-constants": "~18.0.0",
     "expo-linking": "~8.0.0",
     "expo-router": "~6.0.0",
