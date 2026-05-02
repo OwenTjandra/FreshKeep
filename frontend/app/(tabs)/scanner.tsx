@@ -1,16 +1,17 @@
 import { useState, useRef, useCallback } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, StyleSheet, ActivityIndicator, Platform } from 'react-native';
 import { CameraView, useCameraPermissions, type BarcodeScanningResult } from 'expo-camera';
 import { useRouter, useFocusEffect } from 'expo-router';
 
 import { scanBarcode } from '../../lib/api';
-import { colors, fonts, space } from '../../lib/theme';
+import { colors, fonts, space, cardBase } from '../../lib/theme';
 import { Button } from '../../components/Button';
 
 export default function Scanner() {
   const router = useRouter();
   const [permission, requestPermission] = useCameraPermissions();
   const [scanning, setScanning] = useState(false);
+  const [typedBarcode, setTypedBarcode] = useState('');
   const handledRef = useRef(false);
 
   useFocusEffect(
@@ -19,6 +20,41 @@ export default function Scanner() {
       setScanning(false);
     }, [])
   );
+
+  // Web fallback — expo-camera's barcode detector only works on real
+  // iOS/Android. In the browser preview we expose a manual barcode entry
+  // so the rest of the scan flow (Open Food Facts lookup, Set Details)
+  // can still be tested end-to-end.
+  if (Platform.OS === 'web') {
+    return (
+      <View style={styles.permission}>
+        <Text style={styles.title}>Scan a barcode</Text>
+        <Text style={styles.body}>
+          Browser preview can't run the camera scanner — type a barcode below to test
+          the lookup flow, or build the APK and use the device camera.
+        </Text>
+        <View style={[cardBase, { marginTop: space.lg, width: '100%', maxWidth: 360 }]}>
+          <Text style={styles.label}>Barcode</Text>
+          <TextInput
+            value={typedBarcode}
+            onChangeText={setTypedBarcode}
+            placeholder="e.g. 0048001234"
+            placeholderTextColor={colors.muted}
+            keyboardType="number-pad"
+            autoCapitalize="none"
+            style={styles.input}
+          />
+          <View style={{ marginTop: space.md }}>
+            <Button
+              title={scanning ? 'Looking up…' : 'Look up'}
+              onPress={() => typedBarcode.trim() && handleBarcode(typedBarcode.trim())}
+              disabled={scanning || !typedBarcode.trim()}
+            />
+          </View>
+        </View>
+      </View>
+    );
+  }
 
   if (!permission) {
     return <View style={styles.center}><ActivityIndicator color={colors.accent} /></View>;
@@ -138,5 +174,17 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.85)', fontFamily: fonts.body, fontSize: 14,
     marginTop: 24, paddingHorizontal: 16, paddingVertical: 6,
     backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 6,
+  },
+
+  // Web manual-entry fallback
+  label: {
+    fontFamily: fonts.bodyMedium, fontSize: 12, color: colors.muted,
+    textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6,
+  },
+  input: {
+    backgroundColor: colors.bg,
+    borderWidth: 1.5, borderColor: colors.border, borderRadius: 12,
+    paddingHorizontal: space.md, paddingVertical: 12,
+    fontFamily: fonts.body, fontSize: 15, color: colors.ink,
   },
 });
