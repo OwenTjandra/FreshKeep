@@ -35,6 +35,13 @@ The server listens on `$PORT` (default 3000).
 - `POST /api/recipes/suggest`      — Body: `{ item_id }`. Returns either a `{ type: 'recipe', title, time, difficulty, ingredients[], steps[] }` from Claude Sonnet 4.5 (Step 12), or `{ type: 'reminder', title, tip }` for non-cookable categories (skips the API call). Requires `ANTHROPIC_API_KEY` in env; returns 503 `anthropic_not_configured` otherwise. Recipe output is forced via `tool_use` so it's always valid JSON.
 - `POST /api/notifications/register-token` — Body: `{ token, device_label? }`. Stores an FCM token in `fcm_tokens`. Idempotent on `(user_id, token)`.
 - `POST /api/notifications/test`   — Trigger a push *now* for the current user, ignoring the 9am window and `last_notified_at` gate. Useful for verifying templating end-to-end. Doesn't update `last_notified_at` (dryRun: true).
+- `GET  /api/stores`               — list all stores + the user's connection state (Phase 2 / Step 21).
+- `POST /api/stores/connections`   — Body: `{ store_slug, ... connector-specific }`. Creates a `store_connections` row. For mocks: just upserts. For real OAuth: starts the dance and returns auth tokens.
+- `DELETE /api/stores/connections/:id` — set `status='disconnected'`.
+- `POST /api/stores/connections/:id/sync` — invokes the connector and returns `{ count, imports }`.
+- `GET  /api/imports`              — list pending/confirmed/rejected imports. Filter via `?status=...`.
+- `POST /api/imports/:id/confirm`  — Body: `{ expiry_date, location? }`. Creates an `items` row, marks the import `confirmed`.
+- `POST /api/imports/:id/reject`   — discards a pending import.
 
 ## Push notifications (Step 14)
 

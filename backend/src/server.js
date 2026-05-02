@@ -7,6 +7,8 @@ import itemsRouter from './routes/items.js';
 import usersRouter from './routes/users.js';
 import recipesRouter from './routes/recipes.js';
 import notificationsRouter from './routes/notifications.js';
+import storesRouter from './routes/stores.js';
+import importsRouter from './routes/imports.js';
 import { startNotificationScheduler } from './services/notificationScheduler.js';
 
 const app = express();
@@ -22,6 +24,8 @@ app.use('/api/items', itemsRouter);
 app.use('/api/users', usersRouter);
 app.use('/api/recipes', recipesRouter);
 app.use('/api/notifications', notificationsRouter);
+app.use('/api/stores', storesRouter);
+app.use('/api/imports', importsRouter);
 
 // Centralized error handler — services throw, routes call next(err), this responds.
 // eslint-disable-next-line no-unused-vars
