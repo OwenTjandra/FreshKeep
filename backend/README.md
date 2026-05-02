@@ -32,6 +32,7 @@ The server listens on `$PORT` (default 3000).
 - `PATCH /api/items/:id/open`      — mark opened: sets `opened=true`, `opened_at=NOW()`, and recomputes `expiry_date = LEAST(current, today + opened_days_typical)` from the shelf-life table.
 - `PATCH /api/items/:id/mark-fine` — stamps `user_marked_fine_at = NOW()`, used for the past-expiry 24-hour grace window (Step 5 monitor branch / Step 10).
 - `DELETE /api/items/:id`          — hard delete. (To mark as eaten or thrown out, PATCH `status` to `used` / `tossed`.)
+- `POST /api/recipes/suggest`      — Body: `{ item_id }`. Returns either a `{ type: 'recipe', title, time, difficulty, ingredients[], steps[] }` from Claude Sonnet 4.5 (Step 12), or `{ type: 'reminder', title, tip }` for non-cookable categories (skips the API call). Requires `ANTHROPIC_API_KEY` in env; returns 503 `anthropic_not_configured` otherwise. Recipe output is forced via `tool_use` so it's always valid JSON.
 
 All `/api/items` routes are scoped to the seeded demo user via the dev middleware. Real auth is deferred.
 
