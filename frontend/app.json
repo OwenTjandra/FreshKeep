@@ -40,7 +40,8 @@
           "defaultChannel": "freshkeep-default"
         }
       ],
-      "./plugins/withFreshKeepWidget.js"
+      "./plugins/withFreshKeepWidget.js",
+      "@react-native-community/datetimepicker"
     ],
     "notification": {
       "icon": "./assets/icon.png",
