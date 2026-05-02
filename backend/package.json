@@ -9,7 +9,7 @@
     "dev": "node --watch src/server.js",
     "migrate": "node src/db/migrate.js",
     "seed": "node src/db/seeds/seed.js",
-    "test": "echo 'Tests arrive in Step 5' && exit 1"
+    "test": "node --test"
   },
   "dependencies": {
     "cors": "^2.8.5",

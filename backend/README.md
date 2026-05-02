@@ -69,6 +69,39 @@ src/
 
 Migrations are tracked in `schema_migrations` (filename + applied_at). Each migration runs in a transaction; failure rolls back.
 
+## Expiration intelligence engine (Step 5)
+
+`services/expirationIntelligence.js` — pure, synchronous, no I/O. Decides what we tell the user to do with each item.
+
+```
+input:  { location, category, days_until_expiry, freezable?, user_marked_fine_at? }
+output: { action, priority (1-5), reason }  |  null
+```
+
+**Decision tree (top to bottom — first match wins):**
+
+| # | Condition                                                | Action          | Priority |
+|---|----------------------------------------------------------|-----------------|----------|
+| 1 | `location = freezer`                                     | `safe`          | 5        |
+| 2 | past expiry AND `user_marked_fine_at` < 24h ago          | `monitor`       | 3        |
+| 3 | past expiry                                              | `compost`       | 1        |
+| 4 | ≤1 day AND cookable                                      | `use_in_recipe` | 1        |
+| 5 | ≤1 day                                                   | `eat_now`       | 1        |
+| 6 | ≤3 days AND cookable                                     | `use_in_recipe` | 2        |
+| 7 | ≤3 days                                                  | `eat_soon`      | 2        |
+| 8 | 4–5 days AND freezable AND not in freezer                | `freeze_now`    | 2        |
+| 9 | 4–7 days                                                 | `eat_soon`      | 2        |
+| 10| >7 days                                                  | `safe`          | 5        |
+
+**Cookable categories** (use in `use_in_recipe`):
+`meat_chicken`, `meat_beef`, `meat_beef_ground`, `meat_pork`, `meat_fish`, `produce_leafy`, `produce_hard_veg`, `produce_soft_fruit`, `produce_berries`, `eggs`, `bread`, `pantry_dry_goods`. The rest get `eat_soon` and Step 12's recipe endpoint returns `{type: 'reminder'}` for them.
+
+**Freezable** is taken from the `shelf_life_reference.freezable` column when the items service enriches the row via JOIN; otherwise the engine falls back to a small not-freezable-category heuristic (`dairy_cheese_soft`, `pantry_dry_goods`, `pantry_canned`).
+
+**Tests:** 16 scenarios in `services/__tests__/expirationIntelligence.test.js` covering every branch + defensive null cases. Run with `npm test` (uses Node's built-in test runner — no Jest/Mocha needed).
+
+The `_user` parameter is reserved for the Step 6 fridge-temperature multiplier — Step 6 will scale `days_until_expiry` *before* it reaches the engine, so this engine doesn't change.
+
 ## Conventions
 
 - ESM only (`"type": "module"` in package.json). Use `import x from './foo.js'` with explicit `.js`.

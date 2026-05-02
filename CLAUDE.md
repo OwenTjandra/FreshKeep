@@ -21,6 +21,8 @@ Phase 1 (Steps 0–20) builds the core app and widget. Phase 2 (21–25) adds st
 ## Development conventions
 
 - **One commit per numbered step.** Commit message format: `Step N: <short title>`.
+- **Commit and push after every meaningful change.** Don't stack work locally; the user's standing rule is "always continue with the commits."
+- **Don't pause for confirmation.** When the user has framed the task (e.g. the 25-step plan), proceed end-to-end and surface decisions inline as commits. Only stop when there's a genuine ambiguity that can't be resolved with a defensible default — and even then, propose the default so the user can accept with a one-word reply.
 - Each commit should leave the repo in a working state — tests passing, server starts.
 - The backend is **ESM** (`"type": "module"` in package.json). Use `import` syntax with explicit `.js` extensions in relative imports.
 - No mocking the database in integration tests — hit a real Postgres instance.
