@@ -115,9 +115,9 @@ export async function scanBarcode(barcode: string): Promise<ScanResult> {
     };
   }
   try {
-    const res = await fetch(`${OFF_BASE}${encodeURIComponent(barcode)}.json`, {
-      headers: { 'User-Agent': 'FreshKeep/0.1 (prototype)' },
-    });
+    // Note: User-Agent is a forbidden header in browsers — the browser sets
+    // its own; we just rely on that. On native it's fine to omit too.
+    const res = await fetch(`${OFF_BASE}${encodeURIComponent(barcode)}.json`);
     if (res.status === 404) return { found: false, barcode, manual_entry_required: true };
     if (!res.ok) throw new Error(`Open Food Facts ${res.status}`);
     const data = await res.json();

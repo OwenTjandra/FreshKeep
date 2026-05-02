@@ -107,18 +107,28 @@ export default function Profile() {
   );
 }
 
-// Mirrors backend seed.js sample items.
+// Demo items hand-picked so every Home section has at least one entry —
+// makes the prototype walkthrough show the full engine spectrum.
 const DEMO_SEEDS: Array<{ name: string; category: string; location: storage.StoredItem['location']; opened: boolean; days: number }> = [
-  { name: 'Whole milk',     category: 'dairy_milk',         location: 'fridge',  opened: true,  days:   3 },
-  { name: 'Greek yogurt',   category: 'dairy_yogurt',       location: 'fridge',  opened: false, days:   8 },
+  // Eat today (eat_now)
+  { name: 'Whole milk',     category: 'dairy_milk',         location: 'fridge',  opened: true,  days:   0 },
+  // Use this week (eat_soon, non-cookable)
+  { name: 'Greek yogurt',   category: 'dairy_yogurt',       location: 'fridge',  opened: false, days:   3 },
+  // Cook tonight (use_in_recipe priority 1 — cookable + ≤1 day)
   { name: 'Chicken breast', category: 'meat_chicken',       location: 'fridge',  opened: false, days:   1 },
+  // Cook tonight (use_in_recipe priority 2 — cookable + 2-3 days)
   { name: 'Spinach',        category: 'produce_leafy',      location: 'fridge',  opened: true,  days:   2 },
-  { name: 'Strawberries',   category: 'produce_berries',    location: 'fridge',  opened: false, days:   0 },
-  { name: 'Eggs (dozen)',   category: 'eggs',               location: 'fridge',  opened: false, days:  21 },
+  // Freeze now to save (freezable + 4-5 days, not cookable)
+  { name: 'Cheddar cheese', category: 'dairy_cheese_hard',  location: 'fridge',  opened: true,  days:   4 },
+  // Past date — check it (compost)
   { name: 'Sourdough loaf', category: 'bread',              location: 'counter', opened: true,  days:  -1 },
-  { name: 'Ground beef',    category: 'meat_beef_ground',   location: 'freezer', opened: false, days:  90 },
+  // All good — long shelf life
+  { name: 'Eggs (dozen)',   category: 'eggs',               location: 'fridge',  opened: false, days:  21 },
   { name: 'Apples',         category: 'produce_hard_fruit', location: 'fridge',  opened: false, days:  14 },
-  { name: 'Cheddar cheese', category: 'dairy_cheese_hard',  location: 'fridge',  opened: true,  days:  25 },
+  // All good — already frozen
+  { name: 'Ground beef',    category: 'meat_beef_ground',   location: 'freezer', opened: false, days:  90 },
+  // All good (>7 days)
+  { name: 'Strawberries',   category: 'produce_berries',    location: 'fridge',  opened: false, days:   8 },
 ];
 
 const styles = StyleSheet.create({
