@@ -46,6 +46,7 @@ export default function RootLayout() {
         <Stack.Screen name="add" options={{ headerShown: true, title: 'Add item', headerStyle: { backgroundColor: colors.bg } }} />
         <Stack.Screen name="stores" options={{ headerShown: true, title: 'Stores', headerStyle: { backgroundColor: colors.bg } }} />
         <Stack.Screen name="scan-receipt" options={{ headerShown: true, title: 'Scan receipt', headerStyle: { backgroundColor: colors.bg } }} />
+        <Stack.Screen name="edit/[id]" options={{ headerShown: true, title: 'Edit item', headerStyle: { backgroundColor: colors.bg } }} />
       </Stack>
       <StatusBar style="dark" />
     </>

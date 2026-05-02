@@ -10,7 +10,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { findShelfLife, type Location } from './shelfLifeData';
-import { computeRecommendedAction, type EngineUser } from './engine';
+import { computeRecommendedAction, type EngineUser, type EngineOutput } from './engine';
 
 const ITEMS_KEY = 'freshkeep:items:v1';
 const USER_KEY  = 'freshkeep:user:v1';
@@ -38,7 +38,7 @@ export type StoredItem = {
 export type EnrichedItem = StoredItem & {
   days_until_expiry: number;
   freezable: boolean | null;
-  recommended_action: ReturnType<typeof computeRecommendedAction>['action'] | null;
+  recommended_action: EngineOutput['action'] | null;
   action_priority: number | null;
   action_reason: string | null;
 };

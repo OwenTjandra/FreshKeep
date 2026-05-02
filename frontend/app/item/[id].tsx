@@ -94,6 +94,7 @@ export default function ItemDetail() {
         {showStillFine  && <Button title="Still looks fine" variant="secondary" onPress={onStillLooksFine} disabled={busy} />}
         {showMarkUsed   && <Button title="Mark used"        variant="secondary" onPress={onMarkUsed}       disabled={busy} />}
         {showTossIt     && <Button title="Toss it"          variant="secondary" onPress={onTossIt}         disabled={busy} />}
+        <Button title="Edit details"  variant="ghost" onPress={() => router.push(`/edit/${item.id}`)} disabled={busy} />
       </View>
 
       <Text style={styles.section}>Details</Text>
