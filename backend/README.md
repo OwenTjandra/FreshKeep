@@ -17,7 +17,12 @@ npm run seed              # 1 demo user + 10 sample items
 npm run dev               # starts the API with --watch
 ```
 
-The server listens on `$PORT` (default 3000). Health check: `GET /health`.
+The server listens on `$PORT` (default 3000).
+
+## Endpoints
+
+- `GET  /health`     — service liveness
+- `POST /api/scan`   — barcode lookup (Step 3). Body: `{ "barcode": "0000000000000" }`. Returns `{ found, name, brand, category, shelf_life: { days_min, days_typical, days_max, freezable, source, based_on } }` or `{ found: false, manual_entry_required: true }`. Cached in `product_cache`.
 
 ## Structure
 
@@ -33,8 +38,14 @@ src/
     migrations/
       001_initial.sql                     # users, stores, items, shelf_life_reference
       002_seed_shelf_life_reference.sql   # ~77 rows from USDA FSIS FoodKeeper (Step 2)
+      003_product_cache.sql               # barcode → OFF lookup cache (Step 3)
     seeds/
       seed.js                             # 1 demo user + 10 sample items (Step 1)
+  routes/
+    scan.js                               # POST /api/scan (Step 3)
+  services/
+    foodFacts.js                          # OFF client + category mapping (Step 3)
+    scan.js                               # cache → OFF → shelf-life enrich (Step 3)
 ```
 
 ## Schema overview (Step 1)
