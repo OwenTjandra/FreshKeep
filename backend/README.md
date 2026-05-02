@@ -31,10 +31,10 @@ src/
     index.js                    # pg.Pool used by the app
     migrate.js                  # migration runner — `npm run migrate`
     migrations/
-      001_initial.sql           # users, stores, items, shelf_life_reference
+      001_initial.sql                     # users, stores, items, shelf_life_reference
+      002_seed_shelf_life_reference.sql   # ~77 rows from USDA FSIS FoodKeeper (Step 2)
     seeds/
-      seed.js                   # 1 demo user + 10 sample items (Step 1)
-                                # USDA FoodKeeper shelf_life_reference data → Step 2
+      seed.js                             # 1 demo user + 10 sample items (Step 1)
 ```
 
 ## Schema overview (Step 1)
@@ -42,7 +42,7 @@ src/
 - **users** — `email`, `fridge_temp_setting` (°F, default 37), timestamps. The temp setting feeds the engine's multiplier table in Step 6.
 - **items** — `name`, `barcode`, `category`, `quantity`, `location` (fridge/freezer/counter/pantry), `opened` + `opened_at`, `expiry_date`, `status` (active/used/tossed/pending), `recommended_action` (cached engine output), `user_marked_fine_at` (24-hour grace timestamp for the "looks fine" override), timestamps. Includes a check constraint that `opened_at` is non-null iff `opened = true`.
 - **stores** — Phase 2 placeholder. Just the table; populated when integrations land.
-- **shelf_life_reference** — `(category, location, opened)` is unique. Stores `days_min`/`days_typical`/`days_max`, `freezable`, `source`. Seeded in Step 2 from USDA FoodKeeper.
+- **shelf_life_reference** — `(category, location, opened)` is unique. Stores `days_min`/`days_typical`/`days_max`, `freezable`, `source`. Populated by migration 002 from USDA FSIS FoodKeeper. Categories used: `dairy_milk`, `dairy_yogurt`, `dairy_cheese_hard`, `dairy_cheese_soft`, `dairy_butter`, `meat_chicken`, `meat_beef`, `meat_beef_ground`, `meat_pork`, `meat_fish`, `produce_leafy`, `produce_hard_veg`, `produce_soft_fruit`, `produce_hard_fruit`, `produce_berries`, `eggs`, `bread`, `deli`, `pantry_dry_goods`, `pantry_canned`.
 
 Migrations are tracked in `schema_migrations` (filename + applied_at). Each migration runs in a transaction; failure rolls back.
 
