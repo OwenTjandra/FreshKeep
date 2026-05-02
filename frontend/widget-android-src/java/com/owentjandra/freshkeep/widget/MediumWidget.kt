@@ -32,6 +32,11 @@ class FreshKeepMediumWidget : GlanceAppWidget() {
 
 class FreshKeepMediumWidgetReceiver : GlanceAppWidgetReceiver() {
     override val glanceAppWidget: GlanceAppWidget = FreshKeepMediumWidget()
+
+    override fun onEnabled(context: Context) {
+        super.onEnabled(context)
+        RefreshScheduler.scheduleDaily6am(context)
+    }
 }
 
 @Composable

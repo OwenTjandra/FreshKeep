@@ -12,7 +12,11 @@
 // After every `expo prebuild --clean` this is re-applied, so the native
 // code stays in sync with what's in the repo.
 
-const { withDangerousMod, withAndroidManifest, withAppBuildGradle } = require('expo/config-plugins');
+const {
+  withDangerousMod,
+  withAndroidManifest,
+  withAppBuildGradle,
+} = require('expo/config-plugins');
 const fs = require('fs');
 const path = require('path');
 
@@ -29,7 +33,6 @@ const withWidgetSources = (config) =>
   withDangerousMod(config, [
     'android',
     async (cfg) => {
-      const projectRoot = cfg.modRequest.projectRoot;
       const androidProjectRoot = cfg.modRequest.platformProjectRoot;
 
       // Kotlin sources
@@ -70,7 +73,7 @@ function copyDir(src, dst) {
 
 // ───────── 2. AndroidManifest receivers ─────────
 
-const RECEIVERS = [
+const APPWIDGET_RECEIVERS = [
   { className: '.widget.FreshKeepSmallWidgetReceiver',  metadataResource: '@xml/widget_small_info'  },
   { className: '.widget.FreshKeepMediumWidgetReceiver', metadataResource: '@xml/widget_medium_info' },
   { className: '.widget.FreshKeepLargeWidgetReceiver',  metadataResource: '@xml/widget_large_info'  },
@@ -78,17 +81,17 @@ const RECEIVERS = [
 
 const withWidgetManifest = (config) =>
   withAndroidManifest(config, (cfg) => {
-    const application = cfg.modResults.manifest.application?.[0];
+    const manifest = cfg.modResults.manifest;
+    const application = manifest.application?.[0];
     if (!application) return cfg;
     application.receiver = application.receiver || [];
 
-    for (const r of RECEIVERS) {
-      // Avoid duplicate inserts when prebuild re-runs.
+    // ─── AppWidgetProvider receivers (one per size) ───
+    for (const r of APPWIDGET_RECEIVERS) {
       const exists = application.receiver.some(
         (rec) => rec.$['android:name'] === r.className
       );
       if (exists) continue;
-
       application.receiver.push({
         $: {
           'android:name':     r.className,
@@ -105,6 +108,44 @@ const withWidgetManifest = (config) =>
         }],
       });
     }
+
+    // ─── 6am-refresh broadcast receiver (Step 18) ───
+    const refreshClass = '.widget.RefreshAllWidgetsReceiver';
+    if (!application.receiver.some((rec) => rec.$['android:name'] === refreshClass)) {
+      application.receiver.push({
+        $: { 'android:name': refreshClass, 'android:exported': 'false' },
+        'intent-filter': [{
+          action: [{ $: { 'android:name': 'com.owentjandra.freshkeep.widget.REFRESH_ALL' } }],
+        }],
+      });
+    }
+
+    // ─── BOOT_COMPLETED receiver to re-arm the daily alarm ───
+    const bootClass = '.widget.BootReceiver';
+    if (!application.receiver.some((rec) => rec.$['android:name'] === bootClass)) {
+      application.receiver.push({
+        $: { 'android:name': bootClass, 'android:exported': 'true' },
+        'intent-filter': [{
+          action: [
+            { $: { 'android:name': 'android.intent.action.BOOT_COMPLETED' } },
+            { $: { 'android:name': 'android.intent.action.LOCKED_BOOT_COMPLETED' } },
+            { $: { 'android:name': 'android.intent.action.QUICKBOOT_POWERON' } },
+          ],
+        }],
+      });
+    }
+
+    // ─── RECEIVE_BOOT_COMPLETED permission (top-level) ───
+    manifest['uses-permission'] = manifest['uses-permission'] || [];
+    const hasBootPerm = manifest['uses-permission'].some(
+      (p) => p.$['android:name'] === 'android.permission.RECEIVE_BOOT_COMPLETED'
+    );
+    if (!hasBootPerm) {
+      manifest['uses-permission'].push({
+        $: { 'android:name': 'android.permission.RECEIVE_BOOT_COMPLETED' },
+      });
+    }
+
     return cfg;
   });
 
