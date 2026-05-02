@@ -146,6 +146,35 @@ export function deleteItem(id: string) {
   return http<void>(`/api/items/${id}`, { method: 'DELETE' });
 }
 
+// ───────── Recipes ─────────
+export type RecipeIngredient = {
+  name: string;
+  amount: string;
+  expiring: boolean;
+};
+
+export type RecipeResponse =
+  | {
+      type: 'recipe';
+      title: string;
+      time: string;
+      difficulty: 'easy' | 'medium' | 'hard';
+      ingredients: RecipeIngredient[];
+      steps: string[];
+    }
+  | {
+      type: 'reminder';
+      title: string;
+      tip: string;
+    };
+
+export function suggestRecipe(itemId: string) {
+  return http<RecipeResponse>('/api/recipes/suggest', {
+    method: 'POST',
+    body: JSON.stringify({ item_id: itemId }),
+  });
+}
+
 // ───────── Users ─────────
 export type Me = {
   id: string;
