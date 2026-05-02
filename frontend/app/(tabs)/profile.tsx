@@ -4,6 +4,7 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import Slider from '@react-native-community/slider';
 
 import * as storage from '../../lib/storage';
+import { lbsForItem, formatLbs } from '../../lib/shelfLifeData';
 import { colors, fonts, cardBase, sectionLabel, space } from '../../lib/theme';
 import { ScreenHeader } from '../../components/ScreenHeader';
 import { Button } from '../../components/Button';
@@ -13,7 +14,7 @@ export default function Profile() {
   const [me, setMe] = useState<storage.StoredUser | null>(null);
   const [tempDraft, setTempDraft] = useState(37);
   const [keyInput, setKeyInput] = useState('');
-  const [stats, setStats] = useState({ tracked: 0, saved: 0, wasted: 0 });
+  const [stats, setStats] = useState({ tracked: 0, saved: 0, wasted: 0, savedItems: 0, wastedItems: 0 });
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
@@ -22,10 +23,16 @@ export default function Profile() {
     setTempDraft(u.fridge_temp_setting);
     setKeyInput(u.anthropic_api_key || '');
     const all = await storage.listItems({ status: 'all' });
+    const sumLbs = (items: typeof all.items) =>
+      items.reduce((acc, i) => acc + lbsForItem(i.category, i.quantity), 0);
+    const used   = all.items.filter(i => i.status === 'used');
+    const tossed = all.items.filter(i => i.status === 'tossed');
     setStats({
-      tracked: all.items.length,
-      saved: all.items.filter(i => i.status === 'used').length,
-      wasted: all.items.filter(i => i.status === 'tossed').length,
+      tracked:      sumLbs(all.items),
+      saved:        sumLbs(used),
+      wasted:       sumLbs(tossed),
+      savedItems:   used.length,
+      wastedItems:  tossed.length,
     });
   }, []);
 
@@ -90,16 +97,17 @@ export default function Profile() {
     <ScrollView style={styles.scroll} contentContainerStyle={styles.container}>
       <ScreenHeader title="Profile" subtitle="Local prototype — your data stays on this device." />
 
-      {/* ─── Stats ─────────────────────────────────────────────── */}
+      {/* ─── Stats — pounds of food saved/wasted ──────────────── */}
       <Text style={sectionLabel}>Your impact</Text>
       <View style={styles.statsRow}>
-        <StatCell n={stats.tracked} label="Tracked" bg={colors.paper} />
-        <StatCell n={stats.saved}   label="Saved"   bg={colors.freshBg} />
-        <StatCell n={stats.wasted}  label="Wasted"  bg={colors.urgentBg} />
+        <StatCell value={formatLbs(stats.tracked)} label="Tracked" bg={colors.paper} />
+        <StatCell value={formatLbs(stats.saved)}   label="Saved"   bg={colors.freshBg} sub={`${stats.savedItems} item${stats.savedItems === 1 ? '' : 's'}`} />
+        <StatCell value={formatLbs(stats.wasted)}  label="Wasted"  bg={colors.urgentBg} sub={`${stats.wastedItems} item${stats.wastedItems === 1 ? '' : 's'}`} />
       </View>
       <Text style={styles.dim}>
-        Tap "Mark used" on items you eat — it bumps Saved.
-        Tap "Toss it" if it spoiled — it bumps Wasted.
+        Pounds estimated from item type × quantity (Costco-bulk averages).
+        Tap "Mark used" when you eat something → it lands in Saved.
+        "Toss it" → Wasted.
       </Text>
 
       {/* ─── Fridge temperature ─────────────────────────────────── */}
@@ -187,11 +195,12 @@ export default function Profile() {
   );
 }
 
-function StatCell({ n, label, bg }: { n: number; label: string; bg: string }) {
+function StatCell({ value, label, bg, sub }: { value: string; label: string; bg: string; sub?: string }) {
   return (
     <View style={[styles.statCell, { backgroundColor: bg }]}>
-      <Text style={styles.statNum}>{n}</Text>
+      <Text style={styles.statNum}>{value}</Text>
       <Text style={styles.statLabel}>{label}</Text>
+      {sub && <Text style={styles.statSub}>{sub}</Text>}
     </View>
   );
 }
@@ -247,8 +256,9 @@ const styles = StyleSheet.create({
     flex: 1, padding: space.md, borderRadius: 14,
     borderWidth: 1.5, borderColor: colors.border, alignItems: 'center',
   },
-  statNum: { fontFamily: fonts.serif, fontSize: 28, fontWeight: '800', color: colors.ink },
+  statNum: { fontFamily: fonts.serif, fontSize: 22, fontWeight: '800', color: colors.ink, lineHeight: 24 },
   statLabel: { fontFamily: fonts.bodyMedium, fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.8, color: colors.muted, marginTop: 4 },
+  statSub: { fontFamily: fonts.body, fontSize: 10, color: colors.muted, marginTop: 1 },
 
   // KV pairs
   kvKey: { fontFamily: fonts.body, fontSize: 12, color: colors.muted, textTransform: 'uppercase', letterSpacing: 0.5 },

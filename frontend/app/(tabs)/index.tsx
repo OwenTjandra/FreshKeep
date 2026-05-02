@@ -13,6 +13,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 
 import { listItems, updateItem, type Item } from '../../lib/api';
 import { writeWidgetCache } from '../../lib/widgetCache';
+import { lbsForItem, formatLbs } from '../../lib/shelfLifeData';
 import { colors, fonts, hardShadow, sectionLabel, space } from '../../lib/theme';
 import { ScreenHeader } from '../../components/ScreenHeader';
 import { StatCard } from '../../components/StatCard';
@@ -112,6 +113,7 @@ export default function Home() {
   const fresh = grouped.safe.length;
 
   const totalTracked = items?.length ?? 0;
+  const totalLbs = (items || []).reduce((acc, i) => acc + lbsForItem(i.category, i.quantity), 0);
   const todayLabel = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 
   return (
@@ -124,7 +126,7 @@ export default function Home() {
         <View style={{ flex: 1 }}>
           <ScreenHeader
             title="Your kitchen"
-            subtitle={`${todayLabel} · ${totalTracked} item${totalTracked === 1 ? '' : 's'} tracked`}
+            subtitle={`${todayLabel} · ${totalTracked} item${totalTracked === 1 ? '' : 's'} · ${formatLbs(totalLbs)} tracked`}
           />
         </View>
         <Pressable

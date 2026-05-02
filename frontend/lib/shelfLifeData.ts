@@ -135,3 +135,42 @@ export function emojiForCategory(category: string | null): string {
   if (!category) return '🍽️';
   return CATEGORY_OPTIONS.find(o => o.value === category)?.emoji ?? '🍽️';
 }
+
+// Rough typical weight in pounds for one "unit" of each category.
+// Calibrated to Costco-bulk sizes since the app's primary import path
+// is a bulk-store grocery trip. Used by Profile stats and Home subtitle
+// — accuracy doesn't matter much; the UX value is the unit (lbs).
+export const CATEGORY_WEIGHT_LBS: Record<string, number> = {
+  dairy_milk:         4,   // half-gallon
+  dairy_yogurt:       2,   // 32 oz tub
+  dairy_cheese_hard:  2,   // 2 lb block
+  dairy_cheese_soft:  0.5, // 8 oz wedge
+  dairy_butter:       1,   // 1 lb
+  meat_chicken:       4,   // boneless 4 lb pack
+  meat_beef:          3,   // cut
+  meat_beef_ground:   4,   // 4–5 lb pack
+  meat_pork:          3,
+  meat_fish:          2,
+  produce_leafy:      1,   // 16 oz bag
+  produce_hard_veg:   2,
+  produce_soft_fruit: 2,
+  produce_hard_fruit: 5,   // 5 lb bag of apples
+  produce_berries:    2,   // Costco strawberry container
+  eggs:               1.5, // dozen
+  bread:              1.5,
+  deli:               1,
+  pantry_dry_goods:   5,
+  pantry_canned:      1,   // per can
+};
+
+export function lbsForItem(category: string | null, quantity: number): number {
+  const per = (category && CATEGORY_WEIGHT_LBS[category]) ?? 1;
+  return per * (quantity || 1);
+}
+
+export function formatLbs(lbs: number): string {
+  if (lbs === 0) return '0 lb';
+  if (lbs < 0.5) return '<1 lb';
+  if (lbs < 10) return `${lbs.toFixed(1).replace(/\.0$/, '')} lb${lbs === 1 ? '' : 's'}`;
+  return `${Math.round(lbs)} lbs`;
+}
